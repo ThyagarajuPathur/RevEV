@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:controls="clr-namespace:RevEV.Controls"
+             xmlns:viewmodels="clr-namespace:RevEV.ViewModels"
+             x:Class="RevEV.Views.DrivePage"
+             x:DataType="viewmodels:DriveViewModel"
+             BackgroundColor="{StaticResource VoidBlack}">
+
+    <Grid RowDefinitions="Auto,*,Auto" Padding="20">
+
+        <!-- Connection Status Bar -->
+        <Border Grid.Row="0"
+                Style="{StaticResource StatusBorderStyle}"
+                HorizontalOptions="Center"
+                Margin="0,10,0,0">
+            <HorizontalStackLayout Spacing="10">
+                <BoxView WidthRequest="12"
+                         HeightRequest="12"
+                         CornerRadius="6">
+                    <BoxView.Triggers>
+                        <DataTrigger TargetType="BoxView"
+                                     Binding="{Binding IsConnected}"
+                                     Value="True">
+                            <Setter Property="BackgroundColor" Value="{StaticResource TerminalGreen}" />
+                        </DataTrigger>
+                        <DataTrigger TargetType="BoxView"
+                                     Binding="{Binding IsConnected}"
+                                     Value="False">
+                            <Setter Property="BackgroundColor" Value="{StaticResource WarningRed}" />
+                        </DataTrigger>
+                    </BoxView.Triggers>
+                </BoxView>
+                <Label Text="{Binding ConnectionStatus}"
+                       FontFamily="Orbitron"
+                       FontSize="12"
+                       TextColor="{StaticResource GhostWhite}"
+                       VerticalOptions="Center" />
+            </HorizontalStackLayout>
+        </Border>
+
+        <!-- Main Content: Power Ring and Data -->
+        <Grid Grid.Row="1" VerticalOptions="Center">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- Power Ring with RPM -->
+            <Grid Grid.Row="0" HorizontalOptions="Center" VerticalOptions="Center">
+                <controls:PowerRing WidthRequest="300"
+                                    HeightRequest="300"
+                                    Percentage="{Binding RpmPercentage}"
+                                    RingColor="{StaticResource NeonCyan}"
+                                    GlowColor="{StaticResource NeonCyan}"
+                                    BackgroundRingColor="{StaticResource GridGray}" />
+
+                <!-- RPM Value in Center -->
+                <VerticalStackLayout HorizontalOptions="Center"
+                                     VerticalOptions="Center"
+                                     Spacing="0">
+                    <Label Text="{Binding Rpm, StringFormat='{0:F0}'}"
+                           Style="{StaticResource DataValueStyle}"
+                           FontSize="56" />
+                    <Label Text="RPM"
+                           Style="{StaticResource DataLabelStyle}" />
+                </VerticalStackLayout>
+            </Grid>
+
+            <!-- Speed Display -->
+            <VerticalStackLayout Grid.Row="1"
+                                 HorizontalOptions="Center"
+                                 Margin="0,30,0,0"
+                                 Spacing="0">
+                <Label Text="{Binding Speed, StringFormat='{0:F0}'}"
+                       Style="{StaticResource SpeedDisplayStyle}" />
+                <Label Text="KM/H"
+                       Style="{StaticResource UnitLabelStyle}"
+                       HorizontalOptions="Center" />
+            </VerticalStackLayout>
+        </Grid>
+
+        <!-- Bottom Controls -->
+        <Grid Grid.Row="2" ColumnDefinitions="*,*,*" Margin="0,20,0,0">
+
+            <!-- Scan Button -->
+            <Button Grid.Column="0"
+                    Text="{Binding IsScanning, Converter={StaticResource BoolToStringConverter}, ConverterParameter='STOP|SCAN'}"
+                    Style="{StaticResource NeonCyanButtonStyle}"
+                    Command="{Binding ScanCommand}"
+                    IsVisible="{Binding IsConnected, Converter={StaticResource InvertedBoolConverter}}"
+                    Margin="5" />
+
+            <!-- Connect/Disconnect Button -->
+            <Button Grid.Column="1"
+                    Style="{StaticResource FilledCyanButtonStyle}"
+                    Command="{Binding DisconnectCommand}"
+                    IsVisible="{Binding IsConnected}"
+                    Text="DISCONNECT"
+                    Margin="5" />
+
+            <Button Grid.Column="1"
+                    Style="{StaticResource FilledCyanButtonStyle}"
+                    Command="{Binding AutoConnectCommand}"
+                    IsVisible="{Binding IsConnected, Converter={StaticResource InvertedBoolConverter}}"
+                    Text="CONNECT"
+                    Margin="5" />
+
+            <!-- Audio Toggle -->
+            <Button Grid.Column="2"
+                    Text="{Binding IsPlaying, Converter={StaticResource BoolToStringConverter}, ConverterParameter='MUTE|AUDIO'}"
+                    Style="{StaticResource NeonPinkButtonStyle}"
+                    Command="{Binding ToggleAudioCommand}"
+                    IsEnabled="{Binding IsConnected}"
+                    Margin="5" />
+        </Grid>
+
+        <!-- Device Selection Popup -->
+        <Border Grid.RowSpan="3"
+                IsVisible="{Binding IsScanning}"
+                BackgroundColor="{StaticResource DeepSpace}"
+                Stroke="{StaticResource GridGray}"
+                StrokeThickness="2"
+                Padding="20"
+                VerticalOptions="Center"
+                HorizontalOptions="Center"
+                MinimumWidthRequest="300">
+            <Border.StrokeShape>
+                <RoundRectangle CornerRadius="16" />
+            </Border.StrokeShape>
+
+            <VerticalStackLayout Spacing="15">
+                <Label Text="Discovered Devices"
+                       Style="{StaticResource SectionTitleStyle}"
+                       HorizontalOptions="Center" />
+
+                <ActivityIndicator IsRunning="{Binding IsScanning}"
+                                   Color="{StaticResource NeonCyan}"
+                                   HeightRequest="30" />
+
+                <CollectionView ItemsSource="{Binding DiscoveredDevices}"
+                                MaximumHeightRequest="200"
+                                SelectionMode="Single"
+                                SelectionChangedCommand="{Binding ConnectCommand}"
+                                SelectionChangedCommandParameter="{Binding SelectedItem, Source={RelativeSource Self}}">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate>
+                            <Border BackgroundColor="{StaticResource GridGray}"
+                                    Padding="15,10"
+                                    Margin="0,5">
+                                <Border.StrokeShape>
+                                    <RoundRectangle CornerRadius="8" />
+                                </Border.StrokeShape>
+                                <VerticalStackLayout>
+                                    <Label Text="{Binding DisplayName}"
+                                           FontFamily="OrbitronBold"
+                                           TextColor="{StaticResource NeonCyan}" />
+                                    <Label Text="{Binding Address}"
+                                           FontSize="11"
+                                           TextColor="{StaticResource Gray400}" />
+                                </VerticalStackLayout>
+                            </Border>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                    <CollectionView.EmptyView>
+                        <Label Text="Searching for OBD adapters..."
+                               TextColor="{StaticResource Gray400}"
+                               HorizontalOptions="Center" />
+                    </CollectionView.EmptyView>
+                </CollectionView>
+
+                <Button Text="CANCEL"
+                        Style="{StaticResource DangerButtonStyle}"
+                        Command="{Binding ScanCommand}"
+                        HorizontalOptions="Center" />
+            </VerticalStackLayout>
+        </Border>
+
+    </Grid>
+</ContentPage>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="cyanGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#00FFFF;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0066FF;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <!-- Outer ring -->
+  <circle cx="256" cy="256" r="200" fill="none" stroke="#1A1A2E" stroke-width="30"/>
+  <!-- Active ring (3/4 arc) -->
+  <path d="M 256 56 A 200 200 0 1 1 56 256" fill="none" stroke="url(#cyanGlow)" stroke-width="30" stroke-linecap="round"/>
+  <!-- Center text -->
+  <text x="256" y="280" font-family="Arial Black, sans-serif" font-size="120" fill="#00FFFF" text-anchor="middle">EV</text>
+</svg>

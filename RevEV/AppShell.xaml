@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Shell
+    x:Class="RevEV.AppShell"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:views="clr-namespace:RevEV.Views"
+    Shell.FlyoutBehavior="Disabled"
+    Shell.NavBarIsVisible="False"
+    Shell.TabBarBackgroundColor="{StaticResource VoidBlack}"
+    Shell.TabBarTitleColor="{StaticResource NeonCyan}"
+    Shell.TabBarUnselectedColor="{StaticResource GridGray}">
+
+    <TabBar>
+        <ShellContent
+            Title="Drive"
+            ContentTemplate="{DataTemplate views:DrivePage}"
+            Icon="{OnPlatform Android=drive_icon.png, iOS=drive_icon.png}" />
+
+        <ShellContent
+            Title="Engine Bay"
+            ContentTemplate="{DataTemplate views:EngineBayPage}"
+            Icon="{OnPlatform Android=engine_icon.png, iOS=engine_icon.png}" />
+
+        <ShellContent
+            Title="Terminal"
+            ContentTemplate="{DataTemplate views:TerminalPage}"
+            Icon="{OnPlatform Android=terminal_icon.png, iOS=terminal_icon.png}" />
+    </TabBar>
+
+</Shell>

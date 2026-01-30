@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<?xaml-comp compile="true" ?>
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
+
+    <!-- Cyberpunk Color Palette -->
+    <Color x:Key="VoidBlack">#000000</Color>
+    <Color x:Key="DeepSpace">#0A0A0F</Color>
+    <Color x:Key="NeonCyan">#00FFFF</Color>
+    <Color x:Key="PlasmaPink">#FF00FF</Color>
+    <Color x:Key="GridGray">#1A1A2E</Color>
+    <Color x:Key="TerminalGreen">#00FF41</Color>
+    <Color x:Key="WarningRed">#FF3366</Color>
+    <Color x:Key="ElectricBlue">#0066FF</Color>
+    <Color x:Key="NeonYellow">#FFFF00</Color>
+    <Color x:Key="GhostWhite">#F8F8FF</Color>
+    <Color x:Key="DimGray">#696969</Color>
+
+    <!-- Gradient Colors -->
+    <Color x:Key="CyanGradientStart">#00FFFF</Color>
+    <Color x:Key="CyanGradientEnd">#0066FF</Color>
+    <Color x:Key="PinkGradientStart">#FF00FF</Color>
+    <Color x:Key="PinkGradientEnd">#FF3366</Color>
+
+    <!-- Standard MAUI Colors -->
+    <Color x:Key="Primary">#00FFFF</Color>
+    <Color x:Key="Secondary">#FF00FF</Color>
+    <Color x:Key="Tertiary">#0066FF</Color>
+    <Color x:Key="White">White</Color>
+    <Color x:Key="Black">Black</Color>
+    <Color x:Key="Gray100">#E1E1E1</Color>
+    <Color x:Key="Gray200">#C8C8C8</Color>
+    <Color x:Key="Gray300">#ACACAC</Color>
+    <Color x:Key="Gray400">#919191</Color>
+    <Color x:Key="Gray500">#6E6E6E</Color>
+    <Color x:Key="Gray600">#404040</Color>
+    <Color x:Key="Gray900">#212121</Color>
+    <Color x:Key="Gray950">#141414</Color>
+
+</ResourceDictionary>

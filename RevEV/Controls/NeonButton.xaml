@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="RevEV.Controls.NeonButton"
+             x:Name="self">
+
+    <Border x:Name="ButtonBorder"
+            StrokeThickness="2"
+            Padding="20,12"
+            BackgroundColor="Transparent">
+        <Border.StrokeShape>
+            <RoundRectangle CornerRadius="8" />
+        </Border.StrokeShape>
+        <Border.GestureRecognizers>
+            <TapGestureRecognizer Tapped="OnTapped" />
+        </Border.GestureRecognizers>
+
+        <Label x:Name="ButtonLabel"
+               HorizontalOptions="Center"
+               VerticalOptions="Center"
+               FontFamily="OrbitronBold"
+               FontSize="14" />
+    </Border>
+
+</ContentView>

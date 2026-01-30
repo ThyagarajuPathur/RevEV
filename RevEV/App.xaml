@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Application xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:converters="clr-namespace:RevEV.Converters"
+             x:Class="RevEV.App">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Resources/Styles/Colors.xaml" />
+                <ResourceDictionary Source="Resources/Styles/Styles.xaml" />
+                <ResourceDictionary Source="Resources/Styles/CyberpunkTheme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <!-- Value Converters -->
+            <converters:InvertedBoolConverter x:Key="InvertedBoolConverter" />
+            <converters:BoolToStringConverter x:Key="BoolToStringConverter" />
+            <converters:EqualsConverter x:Key="EqualsConverter" />
+            <converters:HasItemsConverter x:Key="HasItemsConverter" />
+            <converters:NullToBoolConverter x:Key="NullToBoolConverter" />
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

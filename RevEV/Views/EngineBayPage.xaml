@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:viewmodels="clr-namespace:RevEV.ViewModels"
+             xmlns:models="clr-namespace:RevEV.Models"
+             x:Class="RevEV.Views.EngineBayPage"
+             x:DataType="viewmodels:EngineBayViewModel"
+             BackgroundColor="{StaticResource VoidBlack}">
+
+    <Grid RowDefinitions="Auto,*" Padding="20">
+
+        <!-- Header -->
+        <VerticalStackLayout Grid.Row="0" Margin="0,20,0,20">
+            <Label Text="ENGINE BAY"
+                   Style="{StaticResource HeroTitleStyle}"
+                   FontSize="32" />
+            <Label Text="Select your engine sound profile"
+                   Style="{StaticResource DataLabelStyle}"
+                   HorizontalOptions="Center"
+                   Margin="0,5,0,0" />
+        </VerticalStackLayout>
+
+        <!-- Engine Profile Cards -->
+        <CollectionView Grid.Row="1"
+                        ItemsSource="{Binding Profiles}"
+                        SelectionMode="Single"
+                        SelectedItem="{Binding SelectedProfile}">
+            <CollectionView.ItemsLayout>
+                <LinearItemsLayout Orientation="Vertical" ItemSpacing="15" />
+            </CollectionView.ItemsLayout>
+
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="models:EngineProfile">
+                    <Border Padding="0"
+                            BackgroundColor="{StaticResource DeepSpace}"
+                            StrokeThickness="2">
+                        <Border.StrokeShape>
+                            <RoundRectangle CornerRadius="16" />
+                        </Border.StrokeShape>
+                        <Border.Triggers>
+                            <DataTrigger TargetType="Border"
+                                         Binding="{Binding Id, Converter={StaticResource EqualsConverter}, ConverterParameter={Binding Source={RelativeSource AncestorType={x:Type viewmodels:EngineBayViewModel}}, Path=SelectedProfile.Id}}"
+                                         Value="True">
+                                <Setter Property="Stroke" Value="{StaticResource NeonCyan}" />
+                            </DataTrigger>
+                        </Border.Triggers>
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:EngineBayViewModel}}, Path=SelectProfileCommand}"
+                                                  CommandParameter="{Binding .}" />
+                        </Border.GestureRecognizers>
+
+                        <Grid ColumnDefinitions="80,*,Auto" Padding="15">
+
+                            <!-- Engine Icon -->
+                            <Border Grid.Column="0"
+                                    BackgroundColor="{StaticResource GridGray}"
+                                    WidthRequest="60"
+                                    HeightRequest="60"
+                                    HorizontalOptions="Center"
+                                    VerticalOptions="Center">
+                                <Border.StrokeShape>
+                                    <RoundRectangle CornerRadius="12" />
+                                </Border.StrokeShape>
+                                <Label Text="V8"
+                                       FontFamily="OrbitronBold"
+                                       FontSize="20"
+                                       TextColor="{StaticResource NeonCyan}"
+                                       HorizontalOptions="Center"
+                                       VerticalOptions="Center" />
+                            </Border>
+
+                            <!-- Profile Info -->
+                            <VerticalStackLayout Grid.Column="1"
+                                                 Spacing="5"
+                                                 VerticalOptions="Center"
+                                                 Margin="15,0">
+                                <Label Text="{Binding Name}"
+                                       Style="{StaticResource CardTitleStyle}" />
+                                <Label Text="{Binding Description}"
+                                       FontSize="12"
+                                       TextColor="{StaticResource Gray400}"
+                                       LineBreakMode="TailTruncation"
+                                       MaxLines="2" />
+
+                                <!-- Tags -->
+                                <HorizontalStackLayout Spacing="8" Margin="0,5,0,0">
+                                    <Border BackgroundColor="{StaticResource GridGray}"
+                                            Padding="8,4"
+                                            IsVisible="{Binding Tags, Converter={StaticResource HasItemsConverter}}">
+                                        <Border.StrokeShape>
+                                            <RoundRectangle CornerRadius="4" />
+                                        </Border.StrokeShape>
+                                        <Label Text="{Binding Tags[0]}"
+                                               FontSize="10"
+                                               TextColor="{StaticResource NeonCyan}" />
+                                    </Border>
+                                </HorizontalStackLayout>
+                            </VerticalStackLayout>
+
+                            <!-- Preview Button -->
+                            <Button Grid.Column="2"
+                                    Text="PLAY"
+                                    FontFamily="Orbitron"
+                                    FontSize="11"
+                                    BackgroundColor="Transparent"
+                                    TextColor="{StaticResource PlasmaPink}"
+                                    BorderColor="{StaticResource PlasmaPink}"
+                                    BorderWidth="1"
+                                    CornerRadius="8"
+                                    Padding="15,8"
+                                    VerticalOptions="Center"
+                                    Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:EngineBayViewModel}}, Path=PreviewProfileCommand}"
+                                    CommandParameter="{Binding .}" />
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+
+            <CollectionView.EmptyView>
+                <VerticalStackLayout HorizontalOptions="Center" VerticalOptions="Center">
+                    <Label Text="No engine profiles found"
+                           TextColor="{StaticResource Gray400}"
+                           FontSize="16" />
+                    <Label Text="Add .wav files to Resources/Raw"
+                           TextColor="{StaticResource Gray500}"
+                           FontSize="12" />
+                </VerticalStackLayout>
+            </CollectionView.EmptyView>
+        </CollectionView>
+
+    </Grid>
+</ContentPage>

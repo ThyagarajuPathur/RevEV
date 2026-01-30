@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:viewmodels="clr-namespace:RevEV.ViewModels"
+             x:Class="RevEV.Views.TerminalPage"
+             x:DataType="viewmodels:TerminalViewModel"
+             BackgroundColor="{StaticResource VoidBlack}">
+
+    <Grid RowDefinitions="Auto,*,Auto,Auto" Padding="10">
+
+        <!-- Header with Controls -->
+        <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto" Margin="10,10,10,5">
+            <Label Text="TERMINAL"
+                   Style="{StaticResource SectionTitleStyle}"
+                   FontSize="20"
+                   VerticalOptions="Center" />
+
+            <Button Grid.Column="1"
+                    Text="{Binding IsPaused, Converter={StaticResource BoolToStringConverter}, ConverterParameter='RESUME|PAUSE'}"
+                    Style="{StaticResource NeonCyanButtonStyle}"
+                    Padding="12,8"
+                    FontSize="11"
+                    Command="{Binding TogglePauseCommand}"
+                    Margin="5,0" />
+
+            <Button Grid.Column="2"
+                    Text="CLEAR"
+                    Style="{StaticResource DangerButtonStyle}"
+                    Padding="12,8"
+                    FontSize="11"
+                    Command="{Binding ClearLogCommand}" />
+        </Grid>
+
+        <!-- Log Display -->
+        <Border Grid.Row="1"
+                BackgroundColor="{StaticResource DeepSpace}"
+                Stroke="{StaticResource GridGray}"
+                StrokeThickness="1"
+                Margin="5">
+            <Border.StrokeShape>
+                <RoundRectangle CornerRadius="8" />
+            </Border.StrokeShape>
+
+            <CollectionView ItemsSource="{Binding LogEntries}"
+                            x:Name="LogCollectionView"
+                            ItemsUpdatingScrollMode="KeepLastItemInView">
+                <CollectionView.ItemsLayout>
+                    <LinearItemsLayout Orientation="Vertical" ItemSpacing="2" />
+                </CollectionView.ItemsLayout>
+
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="viewmodels:OBDFrameDisplay">
+                        <Grid ColumnDefinitions="80,35,*" Padding="10,4">
+                            <Label Grid.Column="0"
+                                   Text="{Binding Timestamp}"
+                                   FontSize="11"
+                                   FontFamily="Consolas, Courier New, monospace"
+                                   TextColor="{StaticResource Gray500}" />
+
+                            <Label Grid.Column="1"
+                                   Text="{Binding Direction}"
+                                   FontSize="11"
+                                   FontFamily="Consolas, Courier New, monospace"
+                                   FontAttributes="Bold"
+                                   TextColor="{Binding TextColor}" />
+
+                            <Label Grid.Column="2"
+                                   Text="{Binding Content}"
+                                   FontSize="11"
+                                   FontFamily="Consolas, Courier New, monospace"
+                                   TextColor="{Binding TextColor}"
+                                   LineBreakMode="TailTruncation" />
+                        </Grid>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+
+                <CollectionView.EmptyView>
+                    <VerticalStackLayout HorizontalOptions="Center"
+                                         VerticalOptions="Center"
+                                         Spacing="10">
+                        <Label Text="No data yet"
+                               TextColor="{StaticResource Gray500}"
+                               FontSize="14"
+                               HorizontalOptions="Center" />
+                        <Label Text="Connect to an OBD adapter to see traffic"
+                               TextColor="{StaticResource Gray600}"
+                               FontSize="12"
+                               HorizontalOptions="Center" />
+                    </VerticalStackLayout>
+                </CollectionView.EmptyView>
+            </CollectionView>
+        </Border>
+
+        <!-- Quick Commands -->
+        <ScrollView Grid.Row="2" Orientation="Horizontal" Margin="5,5">
+            <HorizontalStackLayout Spacing="8">
+                <Button Text="ATZ"
+                        Style="{StaticResource NeonCyanButtonStyle}"
+                        Padding="12,6"
+                        FontSize="11"
+                        Command="{Binding SendQuickCommandCommand}"
+                        CommandParameter="ATZ" />
+                <Button Text="ATI"
+                        Style="{StaticResource NeonCyanButtonStyle}"
+                        Padding="12,6"
+                        FontSize="11"
+                        Command="{Binding SendQuickCommandCommand}"
+                        CommandParameter="ATI" />
+                <Button Text="ATRV"
+                        Style="{StaticResource NeonCyanButtonStyle}"
+                        Padding="12,6"
+                        FontSize="11"
+                        Command="{Binding SendQuickCommandCommand}"
+                        CommandParameter="ATRV" />
+                <Button Text="010C"
+                        Style="{StaticResource NeonCyanButtonStyle}"
+                        Padding="12,6"
+                        FontSize="11"
+                        Command="{Binding SendQuickCommandCommand}"
+                        CommandParameter="010C" />
+                <Button Text="010D"
+                        Style="{StaticResource NeonCyanButtonStyle}"
+                        Padding="12,6"
+                        FontSize="11"
+                        Command="{Binding SendQuickCommandCommand}"
+                        CommandParameter="010D" />
+                <Button Text="0100"
+                        Style="{StaticResource NeonCyanButtonStyle}"
+                        Padding="12,6"
+                        FontSize="11"
+                        Command="{Binding SendQuickCommandCommand}"
+                        CommandParameter="0100" />
+            </HorizontalStackLayout>
+        </ScrollView>
+
+        <!-- Command Input -->
+        <Grid Grid.Row="3" ColumnDefinitions="*,Auto" Margin="5,5,5,10">
+            <Border Grid.Column="0"
+                    BackgroundColor="{StaticResource DeepSpace}"
+                    Stroke="{StaticResource GridGray}"
+                    StrokeThickness="1"
+                    Padding="10,0">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="8" />
+                </Border.StrokeShape>
+                <Entry Text="{Binding CommandInput}"
+                       Placeholder="Enter OBD command..."
+                       PlaceholderColor="{StaticResource Gray600}"
+                       TextColor="{StaticResource TerminalGreen}"
+                       FontFamily="Consolas, Courier New, monospace"
+                       FontSize="14"
+                       BackgroundColor="Transparent"
+                       ReturnCommand="{Binding SendCommandCommand}"
+                       IsEnabled="{Binding IsConnected}" />
+            </Border>
+
+            <Button Grid.Column="1"
+                    Text="SEND"
+                    Style="{StaticResource FilledCyanButtonStyle}"
+                    Padding="20,10"
+                    Margin="8,0,0,0"
+                    Command="{Binding SendCommandCommand}"
+                    IsEnabled="{Binding IsConnected}" />
+        </Grid>
+
+    </Grid>
+</ContentPage>
