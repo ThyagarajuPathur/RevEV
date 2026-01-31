@@ -268,9 +268,30 @@ public partial class DriveViewModel : BaseViewModel
 
     public void Cleanup()
     {
-        _uiUpdateTimer?.Stop();
-        _uiUpdateTimer?.Dispose();
-        _bluetoothManager.ConnectionStateChanged -= OnConnectionStateChanged;
-        _obdHandler.DataUpdated -= OnDataUpdated;
+        // Stop and dispose timer
+        if (_uiUpdateTimer != null)
+        {
+            _uiUpdateTimer.Stop();
+            _uiUpdateTimer.Elapsed -= OnUiTimerElapsed;
+            _uiUpdateTimer.Dispose();
+            _uiUpdateTimer = null;
+        }
+
+        // Stop OBD polling
+        _obdHandler?.StopPolling();
+
+        // Stop audio
+        _audioEngine?.Stop();
+
+        // Unsubscribe from events
+        if (_bluetoothManager != null)
+        {
+            _bluetoothManager.ConnectionStateChanged -= OnConnectionStateChanged;
+        }
+
+        if (_obdHandler != null)
+        {
+            _obdHandler.DataUpdated -= OnDataUpdated;
+        }
     }
 }

@@ -7,16 +7,19 @@ using System.Text;
 
 namespace RevEV.Services.Bluetooth;
 
-public class BleService : IBluetoothService
+public class BleService : IBluetoothService, IDisposable
 {
     private readonly IBluetoothLE _ble;
     private readonly IAdapter _adapter;
+    private readonly object _lock = new();
     private IDevice? _connectedDevice;
     private ICharacteristic? _writeCharacteristic;
     private ICharacteristic? _readCharacteristic;
     private bool _isInitialized;
     private bool _permissionsGranted;
-    private bool _showAllDevices = true; // Show all devices, not just OBD-named ones
+    private bool _showAllDevices = true;
+    private bool _disposed;
+    private bool _characteristicHandlerRegistered;
 
     // Common ELM327 BLE Service and Characteristic UUIDs
     private static readonly Guid[] ServiceUuids = new[]
@@ -41,7 +44,18 @@ public class BleService : IBluetoothService
     };
 
     public BluetoothServiceType ServiceType => BluetoothServiceType.BLE;
-    public bool IsConnected => _connectedDevice?.State == DeviceState.Connected;
+
+    public bool IsConnected
+    {
+        get
+        {
+            lock (_lock)
+            {
+                return _connectedDevice?.State == DeviceState.Connected;
+            }
+        }
+    }
+
     public bool IsScanning => _adapter.IsScanning;
 
     public event EventHandler<BluetoothDevice>? DeviceDiscovered;
@@ -62,6 +76,7 @@ public class BleService : IBluetoothService
 
     public async Task<bool> InitializeAsync()
     {
+        if (_disposed) return false;
         if (_isInitialized && _permissionsGranted) return true;
 
         try
@@ -142,13 +157,14 @@ public class BleService : IBluetoothService
 
     public async Task StartScanningAsync(CancellationToken cancellationToken = default)
     {
+        if (_disposed) return;
+
         // Always try to initialize if not done yet
         if (!_isInitialized || !_permissionsGranted)
         {
             var initResult = await InitializeAsync();
             if (!initResult)
             {
-                // Error already reported by InitializeAsync
                 return;
             }
         }
@@ -167,20 +183,14 @@ public class BleService : IBluetoothService
 
         try
         {
-            // Scan for ALL devices - don't filter by name
-            // This allows users to find any Bluetooth device including
-            // custom-named OBD adapters, Chinese clones, etc.
             await _adapter.StartScanningForDevicesAsync(
                 serviceUuids: null,
                 deviceFilter: device =>
                 {
-                    // Include all devices with names (filter out unnamed devices)
-                    // But also include unnamed devices since some adapters don't advertise names initially
                     if (_showAllDevices)
                     {
-                        return true; // Show everything
+                        return true;
                     }
-                    // Only filter if explicitly requested
                     if (string.IsNullOrEmpty(device.Name)) return false;
                     return device.Name.Contains("OBD", StringComparison.OrdinalIgnoreCase) ||
                            device.Name.Contains("ELM", StringComparison.OrdinalIgnoreCase) ||
@@ -220,26 +230,32 @@ public class BleService : IBluetoothService
 
     public async Task<bool> ConnectAsync(BluetoothDevice device, CancellationToken cancellationToken = default)
     {
+        if (_disposed) return false;
+
+        // Validate device BEFORE changing state
+        if (device.NativeDevice is not IDevice nativeDevice)
+        {
+            ErrorOccurred?.Invoke(this, "Invalid device reference");
+            return false;
+        }
+
         try
         {
             ConnectionStateChanged?.Invoke(this, BluetoothConnectionState.Connecting);
-
-            if (device.NativeDevice is not IDevice nativeDevice)
-            {
-                ErrorOccurred?.Invoke(this, "Invalid device reference");
-                ConnectionStateChanged?.Invoke(this, BluetoothConnectionState.Error);
-                return false;
-            }
 
             var connectParams = new ConnectParameters(
                 autoConnect: false,
                 forceBleTransport: true);
 
             await _adapter.ConnectToDeviceAsync(nativeDevice, connectParams, cancellationToken);
-            _connectedDevice = nativeDevice;
+
+            lock (_lock)
+            {
+                _connectedDevice = nativeDevice;
+            }
 
             // Discover services and characteristics
-            var services = await _connectedDevice.GetServicesAsync();
+            var services = await nativeDevice.GetServicesAsync();
             bool foundCharacteristics = false;
 
             foreach (var service in services)
@@ -277,10 +293,11 @@ public class BleService : IBluetoothService
                         {
                             _readCharacteristic = characteristic;
 
-                            // Subscribe to notifications
-                            if (characteristic.CanUpdate)
+                            // Subscribe to notifications (only if not already subscribed)
+                            if (characteristic.CanUpdate && !_characteristicHandlerRegistered)
                             {
                                 characteristic.ValueUpdated += OnCharacteristicValueUpdated;
+                                _characteristicHandlerRegistered = true;
                                 await characteristic.StartUpdatesAsync();
                             }
                         }
@@ -298,9 +315,10 @@ public class BleService : IBluetoothService
             if (_writeCharacteristic != null && _readCharacteristic == null)
             {
                 _readCharacteristic = _writeCharacteristic;
-                if (_readCharacteristic.CanUpdate)
+                if (_readCharacteristic.CanUpdate && !_characteristicHandlerRegistered)
                 {
                     _readCharacteristic.ValueUpdated += OnCharacteristicValueUpdated;
+                    _characteristicHandlerRegistered = true;
                     await _readCharacteristic.StartUpdatesAsync();
                 }
                 foundCharacteristics = true;
@@ -342,48 +360,79 @@ public class BleService : IBluetoothService
         {
             ConnectionStateChanged?.Invoke(this, BluetoothConnectionState.Disconnecting);
 
-            if (_readCharacteristic != null)
+            // Unsubscribe from characteristic events
+            if (_readCharacteristic != null && _characteristicHandlerRegistered)
             {
                 _readCharacteristic.ValueUpdated -= OnCharacteristicValueUpdated;
+                _characteristicHandlerRegistered = false;
+
                 if (_readCharacteristic.CanUpdate)
                 {
                     try
                     {
                         await _readCharacteristic.StopUpdatesAsync();
                     }
-                    catch { /* Ignore errors during cleanup */ }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Error stopping updates: {ex.Message}");
+                    }
                 }
             }
 
-            if (_connectedDevice != null)
+            IDevice? deviceToDisconnect;
+            lock (_lock)
             {
-                await _adapter.DisconnectDeviceAsync(_connectedDevice);
+                deviceToDisconnect = _connectedDevice;
+                _connectedDevice = null;
+                _writeCharacteristic = null;
+                _readCharacteristic = null;
             }
 
-            _connectedDevice = null;
-            _writeCharacteristic = null;
-            _readCharacteristic = null;
+            if (deviceToDisconnect != null)
+            {
+                await _adapter.DisconnectDeviceAsync(deviceToDisconnect);
+            }
 
             ConnectionStateChanged?.Invoke(this, BluetoothConnectionState.Disconnected);
         }
         catch (Exception ex)
         {
             ErrorOccurred?.Invoke(this, $"Disconnect error: {ex.Message}");
+            lock (_lock)
+            {
+                _connectedDevice = null;
+                _writeCharacteristic = null;
+                _readCharacteristic = null;
+            }
             ConnectionStateChanged?.Invoke(this, BluetoothConnectionState.Disconnected);
         }
     }
 
     public async Task<bool> WriteAsync(byte[] data)
     {
-        if (_writeCharacteristic == null || !IsConnected)
+        if (_disposed) return false;
+
+        ICharacteristic? writeChar;
+        lock (_lock)
         {
-            ErrorOccurred?.Invoke(this, "Not connected or no write characteristic");
+            writeChar = _writeCharacteristic;
+            if (writeChar == null || _connectedDevice?.State != DeviceState.Connected)
+            {
+                ErrorOccurred?.Invoke(this, "Not connected or no write characteristic");
+                return false;
+            }
+        }
+
+        // Validate data length (BLE MTU typically 20 bytes for write)
+        if (data == null || data.Length == 0)
+        {
+            ErrorOccurred?.Invoke(this, "No data to write");
             return false;
         }
 
         try
         {
-            await _writeCharacteristic.WriteAsync(data);
+            await writeChar.WriteAsync(data);
             return true;
         }
         catch (Exception ex)
@@ -395,6 +444,8 @@ public class BleService : IBluetoothService
 
     public async Task<bool> WriteAsync(string data)
     {
+        if (string.IsNullOrEmpty(data)) return false;
+
         // Add carriage return if not present (required by ELM327)
         if (!data.EndsWith("\r"))
         {
@@ -406,6 +457,8 @@ public class BleService : IBluetoothService
 
     private void OnDeviceDiscovered(object? sender, DeviceEventArgs e)
     {
+        if (_disposed) return;
+
         var device = new BluetoothDevice
         {
             Id = e.Device.Id.ToString(),
@@ -421,31 +474,96 @@ public class BleService : IBluetoothService
 
     private void OnDeviceConnected(object? sender, DeviceEventArgs e)
     {
+        if (_disposed) return;
         ConnectionStateChanged?.Invoke(this, BluetoothConnectionState.Connected);
     }
 
     private void OnDeviceDisconnected(object? sender, DeviceEventArgs e)
     {
-        _connectedDevice = null;
-        _writeCharacteristic = null;
-        _readCharacteristic = null;
+        if (_disposed) return;
+
+        lock (_lock)
+        {
+            _connectedDevice = null;
+            _writeCharacteristic = null;
+            _readCharacteristic = null;
+        }
+        _characteristicHandlerRegistered = false;
         ConnectionStateChanged?.Invoke(this, BluetoothConnectionState.Disconnected);
     }
 
     private void OnDeviceConnectionLost(object? sender, DeviceErrorEventArgs e)
     {
-        _connectedDevice = null;
-        _writeCharacteristic = null;
-        _readCharacteristic = null;
+        if (_disposed) return;
+
+        lock (_lock)
+        {
+            _connectedDevice = null;
+            _writeCharacteristic = null;
+            _readCharacteristic = null;
+        }
+        _characteristicHandlerRegistered = false;
         ErrorOccurred?.Invoke(this, $"Connection lost: {e.ErrorMessage}");
         ConnectionStateChanged?.Invoke(this, BluetoothConnectionState.Disconnected);
     }
 
     private void OnCharacteristicValueUpdated(object? sender, CharacteristicUpdatedEventArgs e)
     {
-        if (e.Characteristic.Value != null && e.Characteristic.Value.Length > 0)
+        if (_disposed) return;
+
+        try
         {
-            DataReceived?.Invoke(this, e.Characteristic.Value);
+            var value = e.Characteristic?.Value;
+            if (value != null && value.Length > 0)
+            {
+                DataReceived?.Invoke(this, value);
+            }
         }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error in characteristic update: {ex.Message}");
+        }
+    }
+
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (_disposed) return;
+
+        if (disposing)
+        {
+            // Unsubscribe from adapter events
+            _adapter.DeviceDiscovered -= OnDeviceDiscovered;
+            _adapter.DeviceConnected -= OnDeviceConnected;
+            _adapter.DeviceDisconnected -= OnDeviceDisconnected;
+            _adapter.DeviceConnectionLost -= OnDeviceConnectionLost;
+
+            // Unsubscribe from characteristic events
+            if (_readCharacteristic != null && _characteristicHandlerRegistered)
+            {
+                _readCharacteristic.ValueUpdated -= OnCharacteristicValueUpdated;
+                _characteristicHandlerRegistered = false;
+            }
+
+            // Disconnect if still connected
+            lock (_lock)
+            {
+                _connectedDevice = null;
+                _writeCharacteristic = null;
+                _readCharacteristic = null;
+            }
+        }
+
+        _disposed = true;
+    }
+
+    ~BleService()
+    {
+        Dispose(false);
     }
 }

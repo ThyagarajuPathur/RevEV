@@ -4,13 +4,15 @@ using RevEV.Models;
 
 namespace RevEV.Services.Bluetooth;
 
-public partial class OBDProtocolHandler : ObservableObject
+public partial class OBDProtocolHandler : ObservableObject, IDisposable
 {
     private readonly BluetoothManager _bluetoothManager;
+    private readonly object _lock = new();
     private readonly StringBuilder _responseBuffer = new();
     private TaskCompletionSource<string>? _responseTcs;
     private CancellationTokenSource? _pollingCts;
-    private bool _isInitialized;
+    private volatile bool _isInitialized;
+    private bool _disposed;
 
     [ObservableProperty]
     private bool _isPolling;
@@ -46,6 +48,8 @@ public partial class OBDProtocolHandler : ObservableObject
 
     public async Task<bool> InitializeAsync()
     {
+        if (_disposed) return false;
+
         if (!_bluetoothManager.IsConnected)
         {
             ErrorOccurred?.Invoke(this, "Not connected to adapter");
@@ -69,14 +73,13 @@ public partial class OBDProtocolHandler : ObservableObject
                     FrameReceived?.Invoke(this, rxFrame);
                 }
 
-                // Check for error responses
+                // Check for error responses but continue anyway - some adapters don't support all commands
                 if (response == null || response.Contains("ERROR") || response.Contains("?"))
                 {
-                    // Continue anyway - some adapters don't support all commands
                     continue;
                 }
 
-                await Task.Delay(100); // Brief delay between commands
+                await Task.Delay(100);
             }
 
             _isInitialized = true;
@@ -91,6 +94,8 @@ public partial class OBDProtocolHandler : ObservableObject
 
     public async Task StartPollingAsync()
     {
+        if (_disposed) return;
+
         if (!_isInitialized)
         {
             var initResult = await InitializeAsync();
@@ -104,50 +109,84 @@ public partial class OBDProtocolHandler : ObservableObject
         if (IsPolling) return;
 
         IsPolling = true;
+
+        // Dispose previous CTS
+        _pollingCts?.Dispose();
         _pollingCts = new CancellationTokenSource();
         var token = _pollingCts.Token;
 
-        _ = Task.Run(async () =>
+        Task.Run(async () =>
         {
-            while (!token.IsCancellationRequested && _bluetoothManager.IsConnected)
+            try
             {
-                try
+                while (!token.IsCancellationRequested && _bluetoothManager.IsConnected)
                 {
-                    // Poll RPM
-                    await PollRpmAsync();
+                    try
+                    {
+                        // Poll RPM
+                        await PollRpmAsync();
 
-                    // Small delay between PIDs
-                    await Task.Delay(25, token);
+                        if (token.IsCancellationRequested) break;
 
-                    // Poll Speed
-                    await PollSpeedAsync();
+                        // Small delay between PIDs
+                        await Task.Delay(25, token);
 
-                    // Notify data updated
-                    DataUpdated?.Invoke(this, CurrentData);
+                        // Poll Speed
+                        await PollSpeedAsync();
 
-                    // Target ~20Hz per value (40Hz total, with 25ms delay = ~40ms per cycle)
-                    await Task.Delay(25, token);
-                }
-                catch (OperationCanceledException)
-                {
-                    break;
-                }
-                catch (Exception ex)
-                {
-                    ErrorOccurred?.Invoke(this, $"Polling error: {ex.Message}");
-                    await Task.Delay(500, token); // Back off on error
+                        if (token.IsCancellationRequested) break;
+
+                        // Notify data updated
+                        DataUpdated?.Invoke(this, CurrentData);
+
+                        await Task.Delay(25, token);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        break;
+                    }
+                    catch (Exception ex)
+                    {
+                        if (!token.IsCancellationRequested)
+                        {
+                            ErrorOccurred?.Invoke(this, $"Polling error: {ex.Message}");
+                            try
+                            {
+                                await Task.Delay(500, token);
+                            }
+                            catch (OperationCanceledException)
+                            {
+                                break;
+                            }
+                        }
+                    }
                 }
             }
-
-            IsPolling = false;
+            catch (Exception ex)
+            {
+                if (!token.IsCancellationRequested)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Polling task error: {ex.Message}");
+                }
+            }
+            finally
+            {
+                IsPolling = false;
+            }
         }, token);
     }
 
     public void StopPolling()
     {
-        _pollingCts?.Cancel();
-        _pollingCts?.Dispose();
+        var cts = _pollingCts;
         _pollingCts = null;
+
+        if (cts != null)
+        {
+            cts.Cancel();
+            cts.Dispose();
+        }
+
         IsPolling = false;
     }
 
@@ -189,10 +228,18 @@ public partial class OBDProtocolHandler : ObservableObject
 
     private async Task<string?> SendCommandAsync(string command, TimeSpan timeout)
     {
+        if (_disposed) return null;
         if (!_bluetoothManager.IsConnected) return null;
 
-        _responseBuffer.Clear();
-        _responseTcs = new TaskCompletionSource<string>();
+        TaskCompletionSource<string> tcs;
+        CancellationTokenSource cts;
+
+        lock (_lock)
+        {
+            _responseBuffer.Clear();
+            tcs = new TaskCompletionSource<string>();
+            _responseTcs = tcs;
+        }
 
         // Log TX
         var txFrame = OBDFrame.CreateTx(command);
@@ -202,40 +249,84 @@ public partial class OBDProtocolHandler : ObservableObject
         var sent = await _bluetoothManager.WriteAsync(command);
         if (!sent)
         {
+            lock (_lock)
+            {
+                _responseTcs = null;
+            }
             return null;
         }
 
         // Wait for response with timeout
-        using var cts = new CancellationTokenSource(timeout);
-        cts.Token.Register(() => _responseTcs?.TrySetResult(_responseBuffer.ToString()));
+        cts = new CancellationTokenSource(timeout);
+        var registration = cts.Token.Register(() =>
+        {
+            lock (_lock)
+            {
+                if (_responseTcs == tcs)
+                {
+                    tcs.TrySetResult(_responseBuffer.ToString());
+                }
+            }
+        });
 
         try
         {
-            return await _responseTcs.Task;
+            var result = await tcs.Task;
+            return result;
         }
-        catch
+        catch (Exception)
         {
             return null;
+        }
+        finally
+        {
+            registration.Dispose();
+            cts.Dispose();
+
+            lock (_lock)
+            {
+                if (_responseTcs == tcs)
+                {
+                    _responseTcs = null;
+                }
+            }
         }
     }
 
     private void OnDataReceived(object? sender, byte[] data)
     {
-        var text = Encoding.ASCII.GetString(data);
-        _responseBuffer.Append(text);
+        if (_disposed) return;
 
-        // Check if we have a complete response (ends with > prompt)
-        var response = _responseBuffer.ToString();
-        if (response.Contains('>'))
+        try
         {
-            // Clean up the response
-            response = response
-                .Replace(">", "")
-                .Replace("\r", " ")
-                .Replace("\n", " ")
-                .Trim();
+            var text = Encoding.ASCII.GetString(data);
 
-            _responseTcs?.TrySetResult(response);
+            TaskCompletionSource<string>? tcs;
+            string response;
+
+            lock (_lock)
+            {
+                _responseBuffer.Append(text);
+                response = _responseBuffer.ToString();
+                tcs = _responseTcs;
+            }
+
+            // Check if we have a complete response (ends with > prompt)
+            if (response.Contains('>') && tcs != null)
+            {
+                // Clean up the response
+                response = response
+                    .Replace(">", "")
+                    .Replace("\r", " ")
+                    .Replace("\n", " ")
+                    .Trim();
+
+                tcs.TrySetResult(response);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Data receive error: {ex.Message}");
         }
     }
 
@@ -247,7 +338,6 @@ public partial class OBDProtocolHandler : ObservableObject
     {
         try
         {
-            // Clean and split response
             var parts = response.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
 
             // Find "41 0C" pattern
@@ -269,9 +359,9 @@ public partial class OBDProtocolHandler : ObservableObject
                 return ((a * 256f) + b) / 4f;
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // Parsing failed
+            System.Diagnostics.Debug.WriteLine($"RPM parse error: {ex.Message}");
         }
 
         return null;
@@ -302,9 +392,9 @@ public partial class OBDProtocolHandler : ObservableObject
                 return Convert.ToByte(parts[^1], 16);
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // Parsing failed
+            System.Diagnostics.Debug.WriteLine($"Speed parse error: {ex.Message}");
         }
 
         return null;
@@ -329,9 +419,9 @@ public partial class OBDProtocolHandler : ObservableObject
                 }
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // Parsing failed
+            System.Diagnostics.Debug.WriteLine($"Throttle parse error: {ex.Message}");
         }
 
         return null;
@@ -342,6 +432,8 @@ public partial class OBDProtocolHandler : ObservableObject
     /// </summary>
     public async Task<string?> SendRawCommandAsync(string command)
     {
+        if (_disposed) return null;
+
         var txFrame = OBDFrame.CreateTx(command);
         FrameReceived?.Invoke(this, txFrame);
 
@@ -354,5 +446,36 @@ public partial class OBDProtocolHandler : ObservableObject
         }
 
         return response;
+    }
+
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (_disposed) return;
+
+        if (disposing)
+        {
+            StopPolling();
+
+            _bluetoothManager.DataReceived -= OnDataReceived;
+
+            lock (_lock)
+            {
+                _responseTcs?.TrySetCanceled();
+                _responseTcs = null;
+            }
+        }
+
+        _disposed = true;
+    }
+
+    ~OBDProtocolHandler()
+    {
+        Dispose(false);
     }
 }

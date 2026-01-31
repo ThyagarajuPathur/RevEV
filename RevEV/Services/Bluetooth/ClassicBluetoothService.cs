@@ -7,12 +7,14 @@ namespace RevEV.Services.Bluetooth;
 /// Note: Classic Bluetooth is only available on Android.
 /// On iOS, this service will report as unavailable.
 /// </summary>
-public class ClassicBluetoothService : IBluetoothService
+public class ClassicBluetoothService : IBluetoothService, IDisposable
 {
-    private bool _isInitialized;
-    private bool _isConnected;
-    private bool _isScanning;
+    private readonly object _lock = new();
+    private volatile bool _isInitialized;
+    private volatile bool _isConnected;
+    private volatile bool _isScanning;
     private bool _permissionsGranted;
+    private bool _disposed;
     private CancellationTokenSource? _readCts;
     private CancellationTokenSource? _discoveryCts;
     private bool _showAllDevices = true;
@@ -50,6 +52,7 @@ public class ClassicBluetoothService : IBluetoothService
 
     public async Task<bool> InitializeAsync()
     {
+        if (_disposed) return false;
         if (_isInitialized && _permissionsGranted) return true;
 
 #if ANDROID
@@ -117,6 +120,8 @@ public class ClassicBluetoothService : IBluetoothService
 
     public async Task StartScanningAsync(CancellationToken cancellationToken = default)
     {
+        if (_disposed) return;
+
 #if ANDROID
         if (!_isInitialized || !_permissionsGranted)
         {
@@ -133,12 +138,15 @@ public class ClassicBluetoothService : IBluetoothService
             return;
         }
 
+        // Dispose previous CTS if any
+        _discoveryCts?.Dispose();
+
         try
         {
             _isScanning = true;
             _discoveryCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
-            // First, report ALL paired/bonded devices (show all, not just OBD-named)
+            // First, report ALL paired/bonded devices
             var pairedDevices = _adapter.BondedDevices;
             if (pairedDevices != null)
             {
@@ -146,7 +154,6 @@ public class ClassicBluetoothService : IBluetoothService
                 {
                     if (device == null) continue;
 
-                    // Show all devices or filter if requested
                     bool includeDevice = _showAllDevices ||
                         (device.Name != null && IsLikelyOBDDevice(device.Name));
 
@@ -166,8 +173,7 @@ public class ClassicBluetoothService : IBluetoothService
                 }
             }
 
-            // Now start actual discovery for unpaired devices
-            // Register broadcast receiver for discovered devices
+            // Start actual discovery for unpaired devices
             _discoveryReceiver = new DiscoveryReceiver(this, _showAllDevices);
             var filter = new Android.Content.IntentFilter();
             filter.AddAction(Android.Bluetooth.BluetoothDevice.ActionFound);
@@ -197,7 +203,7 @@ public class ClassicBluetoothService : IBluetoothService
                 ErrorOccurred?.Invoke(this, "Failed to start Bluetooth discovery. Make sure Bluetooth is enabled.");
             }
 
-            // Wait for discovery to complete or cancellation (max 12 seconds for classic discovery)
+            // Wait for discovery to complete or cancellation
             try
             {
                 await Task.Delay(12000, _discoveryCts.Token);
@@ -224,21 +230,31 @@ public class ClassicBluetoothService : IBluetoothService
         finally
         {
             _isScanning = false;
-            try
-            {
-                if (_discoveryReceiver != null)
-                {
-                    Android.App.Application.Context.UnregisterReceiver(_discoveryReceiver);
-                    _discoveryReceiver = null;
-                }
-            }
-            catch { /* Ignore unregister errors */ }
+            UnregisterDiscoveryReceiver();
         }
 #else
         await Task.CompletedTask;
         ErrorOccurred?.Invoke(this, "Classic Bluetooth scanning not available on this platform");
 #endif
     }
+
+#if ANDROID
+    private void UnregisterDiscoveryReceiver()
+    {
+        try
+        {
+            if (_discoveryReceiver != null)
+            {
+                Android.App.Application.Context.UnregisterReceiver(_discoveryReceiver);
+                _discoveryReceiver = null;
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error unregistering receiver: {ex.Message}");
+        }
+    }
+#endif
 
     private static bool IsLikelyOBDDevice(string name)
     {
@@ -259,56 +275,56 @@ public class ClassicBluetoothService : IBluetoothService
         _discoveryCts?.Cancel();
 #if ANDROID
         _adapter?.CancelDiscovery();
-        try
-        {
-            if (_discoveryReceiver != null)
-            {
-                Android.App.Application.Context.UnregisterReceiver(_discoveryReceiver);
-                _discoveryReceiver = null;
-            }
-        }
-        catch { /* Ignore */ }
+        UnregisterDiscoveryReceiver();
 #endif
         return Task.CompletedTask;
     }
 
     public async Task<bool> ConnectAsync(BluetoothDevice device, CancellationToken cancellationToken = default)
     {
+        if (_disposed) return false;
+
 #if ANDROID
+        // Validate device BEFORE changing state
+        if (device.NativeDevice is not Android.Bluetooth.BluetoothDevice nativeDevice)
+        {
+            ErrorOccurred?.Invoke(this, "Invalid device reference");
+            return false;
+        }
+
         try
         {
             ConnectionStateChanged?.Invoke(this, BluetoothConnectionState.Connecting);
-
-            if (device.NativeDevice is not Android.Bluetooth.BluetoothDevice nativeDevice)
-            {
-                ErrorOccurred?.Invoke(this, "Invalid device reference");
-                ConnectionStateChanged?.Invoke(this, BluetoothConnectionState.Error);
-                return false;
-            }
 
             // Cancel any ongoing discovery
             _adapter?.CancelDiscovery();
 
             // Create RFCOMM socket
-            _socket = nativeDevice.CreateRfcommSocketToServiceRecord(_sppUuid);
+            var socket = nativeDevice.CreateRfcommSocketToServiceRecord(_sppUuid);
 
-            if (_socket == null)
+            if (socket == null)
             {
                 ErrorOccurred?.Invoke(this, "Failed to create Bluetooth socket");
                 ConnectionStateChanged?.Invoke(this, BluetoothConnectionState.Error);
                 return false;
             }
 
+            lock (_lock)
+            {
+                _socket = socket;
+            }
+
             // Connect with timeout
             using var connectCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             connectCts.CancelAfter(TimeSpan.FromSeconds(15));
 
-            await Task.Run(() => _socket.Connect(), connectCts.Token);
+            await Task.Run(() => socket.Connect(), connectCts.Token);
 
-            if (!_socket.IsConnected)
+            if (!socket.IsConnected)
             {
                 ErrorOccurred?.Invoke(this, "Socket connection failed");
                 ConnectionStateChanged?.Invoke(this, BluetoothConnectionState.Error);
+                CleanupSocket();
                 return false;
             }
 
@@ -324,18 +340,21 @@ public class ClassicBluetoothService : IBluetoothService
         {
             ErrorOccurred?.Invoke(this, "Connection timed out");
             ConnectionStateChanged?.Invoke(this, BluetoothConnectionState.Error);
+            CleanupSocket();
             return false;
         }
         catch (Java.IO.IOException ex)
         {
             ErrorOccurred?.Invoke(this, $"Connection failed: {ex.Message}");
             ConnectionStateChanged?.Invoke(this, BluetoothConnectionState.Error);
+            CleanupSocket();
             return false;
         }
         catch (Exception ex)
         {
             ErrorOccurred?.Invoke(this, $"Connection error: {ex.Message}");
             ConnectionStateChanged?.Invoke(this, BluetoothConnectionState.Error);
+            CleanupSocket();
             return false;
         }
 #else
@@ -345,6 +364,28 @@ public class ClassicBluetoothService : IBluetoothService
 #endif
     }
 
+#if ANDROID
+    private void CleanupSocket()
+    {
+        lock (_lock)
+        {
+            if (_socket != null)
+            {
+                try
+                {
+                    _socket.Close();
+                    _socket.Dispose();
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Socket cleanup error: {ex.Message}");
+                }
+                _socket = null;
+            }
+        }
+    }
+#endif
+
     public async Task DisconnectAsync()
     {
 #if ANDROID
@@ -352,23 +393,34 @@ public class ClassicBluetoothService : IBluetoothService
         {
             ConnectionStateChanged?.Invoke(this, BluetoothConnectionState.Disconnecting);
 
+            // Cancel read operation
             _readCts?.Cancel();
-            _readCts?.Dispose();
-            _readCts = null;
 
-            if (_socket != null)
+            Android.Bluetooth.BluetoothSocket? socketToClose;
+            lock (_lock)
+            {
+                socketToClose = _socket;
+                _socket = null;
+            }
+
+            if (socketToClose != null)
             {
                 try
                 {
-                    _socket.InputStream?.Close();
-                    _socket.OutputStream?.Close();
-                    _socket.Close();
+                    socketToClose.InputStream?.Close();
+                    socketToClose.OutputStream?.Close();
+                    socketToClose.Close();
+                    socketToClose.Dispose();
                 }
-                catch { /* Ignore cleanup errors */ }
-
-                _socket.Dispose();
-                _socket = null;
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Socket close error: {ex.Message}");
+                }
             }
+
+            // Dispose CTS after cancellation
+            _readCts?.Dispose();
+            _readCts = null;
 
             _isConnected = false;
             ConnectionStateChanged?.Invoke(this, BluetoothConnectionState.Disconnected);
@@ -388,17 +440,31 @@ public class ClassicBluetoothService : IBluetoothService
 
     public async Task<bool> WriteAsync(byte[] data)
     {
+        if (_disposed) return false;
+
 #if ANDROID
-        if (_socket?.OutputStream == null || !_isConnected)
+        Android.Bluetooth.BluetoothSocket? socket;
+        lock (_lock)
+        {
+            socket = _socket;
+        }
+
+        if (socket?.OutputStream == null || !_isConnected)
         {
             ErrorOccurred?.Invoke(this, "Not connected");
             return false;
         }
 
+        if (data == null || data.Length == 0)
+        {
+            ErrorOccurred?.Invoke(this, "No data to write");
+            return false;
+        }
+
         try
         {
-            await _socket.OutputStream.WriteAsync(data);
-            await _socket.OutputStream.FlushAsync();
+            await socket.OutputStream.WriteAsync(data);
+            await socket.OutputStream.FlushAsync();
             return true;
         }
         catch (Exception ex)
@@ -415,6 +481,8 @@ public class ClassicBluetoothService : IBluetoothService
 
     public async Task<bool> WriteAsync(string data)
     {
+        if (string.IsNullOrEmpty(data)) return false;
+
         // Add carriage return if not present
         if (!data.EndsWith("\r"))
         {
@@ -427,6 +495,7 @@ public class ClassicBluetoothService : IBluetoothService
 #if ANDROID
     private void StartReadingData()
     {
+        _readCts?.Dispose();
         _readCts = new CancellationTokenSource();
         var token = _readCts.Token;
 
@@ -434,34 +503,53 @@ public class ClassicBluetoothService : IBluetoothService
         {
             byte[] buffer = new byte[1024];
 
-            while (!token.IsCancellationRequested && _socket?.InputStream != null && _isConnected)
+            try
             {
-                try
+                while (!token.IsCancellationRequested && _isConnected)
                 {
-                    int bytesRead = await _socket.InputStream.ReadAsync(buffer, 0, buffer.Length, token);
-                    if (bytesRead > 0)
+                    Android.Bluetooth.BluetoothSocket? socket;
+                    lock (_lock)
                     {
-                        byte[] data = new byte[bytesRead];
-                        Array.Copy(buffer, data, bytesRead);
-                        DataReceived?.Invoke(this, data);
+                        socket = _socket;
+                    }
+
+                    if (socket?.InputStream == null) break;
+
+                    try
+                    {
+                        int bytesRead = await socket.InputStream.ReadAsync(buffer, 0, buffer.Length, token);
+                        if (bytesRead > 0)
+                        {
+                            byte[] data = new byte[bytesRead];
+                            Array.Copy(buffer, data, bytesRead);
+                            DataReceived?.Invoke(this, data);
+                        }
+                        else if (bytesRead == 0)
+                        {
+                            // Stream closed
+                            break;
+                        }
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        break;
+                    }
+                    catch (Java.IO.IOException)
+                    {
+                        // Connection lost
+                        if (_isConnected)
+                        {
+                            _isConnected = false;
+                            ErrorOccurred?.Invoke(this, "Connection lost");
+                            ConnectionStateChanged?.Invoke(this, BluetoothConnectionState.Disconnected);
+                        }
+                        break;
                     }
                 }
-                catch (OperationCanceledException)
-                {
-                    break;
-                }
-                catch (Java.IO.IOException)
-                {
-                    // Connection lost
-                    if (_isConnected)
-                    {
-                        _isConnected = false;
-                        ErrorOccurred?.Invoke(this, "Connection lost");
-                        ConnectionStateChanged?.Invoke(this, BluetoothConnectionState.Disconnected);
-                    }
-                    break;
-                }
-                catch (Exception ex)
+            }
+            catch (Exception ex)
+            {
+                if (!token.IsCancellationRequested && _isConnected)
                 {
                     ErrorOccurred?.Invoke(this, $"Read error: {ex.Message}");
                 }
@@ -471,9 +559,45 @@ public class ClassicBluetoothService : IBluetoothService
 
     internal void OnDeviceFound(BluetoothDevice device)
     {
+        if (_disposed) return;
         DeviceDiscovered?.Invoke(this, device);
     }
 #endif
+
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (_disposed) return;
+
+        if (disposing)
+        {
+            _readCts?.Cancel();
+            _readCts?.Dispose();
+            _readCts = null;
+
+            _discoveryCts?.Cancel();
+            _discoveryCts?.Dispose();
+            _discoveryCts = null;
+
+#if ANDROID
+            UnregisterDiscoveryReceiver();
+            CleanupSocket();
+#endif
+        }
+
+        _isConnected = false;
+        _disposed = true;
+    }
+
+    ~ClassicBluetoothService()
+    {
+        Dispose(false);
+    }
 }
 
 #if ANDROID
@@ -502,42 +626,52 @@ internal class DiscoveryReceiver : Android.Content.BroadcastReceiver
         {
             Android.Bluetooth.BluetoothDevice? device = null;
 
-            if (Android.OS.Build.VERSION.SdkInt >= Android.OS.BuildVersionCodes.Tiramisu)
+            try
             {
-                device = intent.GetParcelableExtra(
-                    Android.Bluetooth.BluetoothDevice.ExtraDevice,
-                    Java.Lang.Class.FromType(typeof(Android.Bluetooth.BluetoothDevice))) as Android.Bluetooth.BluetoothDevice;
-            }
-            else
-            {
-#pragma warning disable CA1422
-                device = intent.GetParcelableExtra(Android.Bluetooth.BluetoothDevice.ExtraDevice) as Android.Bluetooth.BluetoothDevice;
-#pragma warning restore CA1422
-            }
-
-            if (device != null && !string.IsNullOrEmpty(device.Address))
-            {
-                // Avoid duplicates
-                if (_discoveredAddresses.Contains(device.Address)) return;
-                _discoveredAddresses.Add(device.Address);
-
-                // Filter if not showing all devices
-                if (!_showAllDevices && !string.IsNullOrEmpty(device.Name) && !IsLikelyOBDDevice(device.Name))
+                if (Android.OS.Build.VERSION.SdkInt >= Android.OS.BuildVersionCodes.Tiramisu)
                 {
-                    return;
+                    device = intent.GetParcelableExtra(
+                        Android.Bluetooth.BluetoothDevice.ExtraDevice,
+                        Java.Lang.Class.FromType(typeof(Android.Bluetooth.BluetoothDevice))) as Android.Bluetooth.BluetoothDevice;
+                }
+                else
+                {
+#pragma warning disable CA1422
+                    device = intent.GetParcelableExtra(Android.Bluetooth.BluetoothDevice.ExtraDevice) as Android.Bluetooth.BluetoothDevice;
+#pragma warning restore CA1422
                 }
 
-                var btDevice = new BluetoothDevice
+                if (device != null && !string.IsNullOrEmpty(device.Address))
                 {
-                    Id = device.Address,
-                    Name = device.Name ?? "Unknown Device",
-                    Address = device.Address,
-                    DeviceType = BluetoothDeviceType.Classic,
-                    IsPaired = device.BondState == Android.Bluetooth.Bond.Bonded,
-                    NativeDevice = device
-                };
+                    // Avoid duplicates (thread-safe check)
+                    lock (_discoveredAddresses)
+                    {
+                        if (_discoveredAddresses.Contains(device.Address)) return;
+                        _discoveredAddresses.Add(device.Address);
+                    }
 
-                _service.OnDeviceFound(btDevice);
+                    // Filter if not showing all devices
+                    if (!_showAllDevices && !string.IsNullOrEmpty(device.Name) && !IsLikelyOBDDevice(device.Name))
+                    {
+                        return;
+                    }
+
+                    var btDevice = new BluetoothDevice
+                    {
+                        Id = device.Address,
+                        Name = device.Name ?? "Unknown Device",
+                        Address = device.Address,
+                        DeviceType = BluetoothDeviceType.Classic,
+                        IsPaired = device.BondState == Android.Bluetooth.Bond.Bonded,
+                        NativeDevice = device
+                    };
+
+                    _service.OnDeviceFound(btDevice);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error processing discovered device: {ex.Message}");
             }
         }
     }

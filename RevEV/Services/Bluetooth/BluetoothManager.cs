@@ -4,16 +4,18 @@ using RevEV.Services.Settings;
 
 namespace RevEV.Services.Bluetooth;
 
-public partial class BluetoothManager : ObservableObject
+public partial class BluetoothManager : ObservableObject, IDisposable
 {
     private readonly IBluetoothService _bleService;
     private readonly IAppSettings _settings;
+    private readonly object _lock = new();
     private IBluetoothService? _classicService;
     private IBluetoothService? _activeService;
     private CancellationTokenSource? _scanCts;
     private CancellationTokenSource? _reconnectCts;
-    private bool _isInitialized;
+    private volatile bool _isInitialized;
     private string? _lastError;
+    private bool _disposed;
 
     [ObservableProperty]
     private bool _isScanning;
@@ -64,8 +66,17 @@ public partial class BluetoothManager : ObservableObject
         service.ErrorOccurred += OnErrorOccurred;
     }
 
+    private void RemoveServiceEvents(IBluetoothService service)
+    {
+        service.DeviceDiscovered -= OnDeviceDiscovered;
+        service.ConnectionStateChanged -= OnConnectionStateChanged;
+        service.DataReceived -= OnDataReceived;
+        service.ErrorOccurred -= OnErrorOccurred;
+    }
+
     public async Task<bool> InitializeAsync()
     {
+        if (_disposed) return false;
         if (_isInitialized) return true;
 
         _lastError = null;
@@ -98,6 +109,7 @@ public partial class BluetoothManager : ObservableObject
 
     public async Task StartScanningAsync()
     {
+        if (_disposed) return;
         if (IsScanning) return;
 
         // Clear any previous error
@@ -118,6 +130,8 @@ public partial class BluetoothManager : ObservableObject
         IsScanning = true;
         StatusMessage = "Scanning for devices...";
 
+        // Dispose previous CTS if any
+        _scanCts?.Dispose();
         _scanCts = new CancellationTokenSource();
         _scanCts.CancelAfter(TimeSpan.FromSeconds(30));
 
@@ -173,6 +187,7 @@ public partial class BluetoothManager : ObservableObject
 
     public async Task<bool> ConnectAsync(BluetoothDevice device)
     {
+        if (_disposed) return false;
         if (IsConnecting || IsConnected) return false;
 
         IsConnecting = true;
@@ -196,7 +211,6 @@ public partial class BluetoothManager : ObservableObject
                     fallbackService = _classicService;
                     break;
                 case BluetoothDeviceType.Dual:
-                    // Try BLE first for dual-mode devices, then Classic
                     primaryService = _bleService;
                     fallbackService = _classicService;
                     break;
@@ -207,15 +221,21 @@ public partial class BluetoothManager : ObservableObject
             }
 
             // Try primary service
-            _activeService = primaryService;
-            var result = await _activeService.ConnectAsync(device);
+            lock (_lock)
+            {
+                _activeService = primaryService;
+            }
+            var result = await primaryService.ConnectAsync(device);
 
             // If primary failed and we have a fallback, try it
             if (!result && fallbackService != null && fallbackService != primaryService)
             {
                 StatusMessage = $"Retrying connection to {device.DisplayName}...";
-                _activeService = fallbackService;
-                result = await _activeService.ConnectAsync(device);
+                lock (_lock)
+                {
+                    _activeService = fallbackService;
+                }
+                result = await fallbackService.ConnectAsync(device);
             }
 
             if (result)
@@ -231,7 +251,10 @@ public partial class BluetoothManager : ObservableObject
             }
             else
             {
-                _activeService = null;
+                lock (_lock)
+                {
+                    _activeService = null;
+                }
                 StatusMessage = _lastError ?? "Connection failed. Make sure the device is nearby and powered on.";
             }
 
@@ -241,7 +264,10 @@ public partial class BluetoothManager : ObservableObject
         {
             _lastError = ex.Message;
             StatusMessage = $"Connection error: {ex.Message}";
-            _activeService = null;
+            lock (_lock)
+            {
+                _activeService = null;
+            }
             return false;
         }
         finally
@@ -254,12 +280,18 @@ public partial class BluetoothManager : ObservableObject
     {
         _reconnectCts?.Cancel();
 
-        if (_activeService != null)
+        IBluetoothService? serviceToDisconnect;
+        lock (_lock)
         {
-            await _activeService.DisconnectAsync();
+            serviceToDisconnect = _activeService;
+            _activeService = null;
         }
 
-        _activeService = null;
+        if (serviceToDisconnect != null)
+        {
+            await serviceToDisconnect.DisconnectAsync();
+        }
+
         ConnectedDevice = null;
         IsConnected = false;
         StatusMessage = "Disconnected";
@@ -267,6 +299,8 @@ public partial class BluetoothManager : ObservableObject
 
     public async Task<bool> AutoConnectAsync()
     {
+        if (_disposed) return false;
+
         if (string.IsNullOrEmpty(_settings.LastConnectedDeviceAddress))
         {
             StatusMessage = "No previously connected device";
@@ -291,8 +325,11 @@ public partial class BluetoothManager : ObservableObject
             }
         }
 
-        // Scan for the device - use a longer timeout to find it
+        // Scan for the device
         DiscoveredDevices.Clear();
+
+        // Dispose previous CTS
+        _scanCts?.Dispose();
         _scanCts = new CancellationTokenSource();
         _scanCts.CancelAfter(TimeSpan.FromSeconds(15));
 
@@ -307,7 +344,7 @@ public partial class BluetoothManager : ObservableObject
                 tasks.Add(_classicService.StartScanningAsync(_scanCts.Token));
             }
 
-            // Wait for device discovery with polling - stop early if we find our device
+            // Wait for device discovery with polling
             var startTime = DateTime.UtcNow;
             var maxWait = TimeSpan.FromSeconds(10);
 
@@ -324,7 +361,14 @@ public partial class BluetoothManager : ObservableObject
                     return await ConnectAsync(savedDevice);
                 }
 
-                await Task.Delay(500, _scanCts.Token);
+                try
+                {
+                    await Task.Delay(500, _scanCts.Token);
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
             }
 
             await Task.WhenAll(tasks);
@@ -339,7 +383,7 @@ public partial class BluetoothManager : ObservableObject
             await StopScanningAsync();
         }
 
-        // Final check - device might have been found just before timeout
+        // Final check
         var device = DiscoveredDevices.FirstOrDefault(d =>
             d.Address == _settings.LastConnectedDeviceAddress);
 
@@ -354,30 +398,47 @@ public partial class BluetoothManager : ObservableObject
 
     public async Task<bool> WriteAsync(byte[] data)
     {
-        if (_activeService == null || !IsConnected)
+        if (_disposed) return false;
+
+        IBluetoothService? service;
+        lock (_lock)
+        {
+            service = _activeService;
+        }
+
+        if (service == null || !IsConnected)
         {
             return false;
         }
 
-        return await _activeService.WriteAsync(data);
+        return await service.WriteAsync(data);
     }
 
     public async Task<bool> WriteAsync(string command)
     {
-        if (_activeService == null || !IsConnected)
+        if (_disposed) return false;
+
+        IBluetoothService? service;
+        lock (_lock)
+        {
+            service = _activeService;
+        }
+
+        if (service == null || !IsConnected)
         {
             return false;
         }
 
-        return await _activeService.WriteAsync(command);
+        return await service.WriteAsync(command);
     }
 
     public void StartAutoReconnect()
     {
+        if (_disposed) return;
         if (!_settings.AutoConnectOnLaunch) return;
         if (string.IsNullOrEmpty(_settings.LastConnectedDeviceAddress)) return;
 
-        StopAutoReconnect(); // Stop any existing reconnect loop
+        StopAutoReconnect();
 
         _reconnectCts = new CancellationTokenSource();
         var token = _reconnectCts.Token;
@@ -387,65 +448,86 @@ public partial class BluetoothManager : ObservableObject
             int failedAttempts = 0;
             const int maxRetries = 5;
 
-            while (!token.IsCancellationRequested && failedAttempts < maxRetries)
+            try
             {
-                try
+                while (!token.IsCancellationRequested && failedAttempts < maxRetries)
                 {
-                    if (!IsConnected && !IsConnecting && !IsScanning &&
-                        !string.IsNullOrEmpty(_settings.LastConnectedDeviceAddress))
+                    try
                     {
-                        var result = await MainThread.InvokeOnMainThreadAsync(async () =>
+                        if (!IsConnected && !IsConnecting && !IsScanning &&
+                            !string.IsNullOrEmpty(_settings.LastConnectedDeviceAddress))
                         {
-                            return await AutoConnectAsync();
-                        });
+                            var result = await MainThread.InvokeOnMainThreadAsync(async () =>
+                            {
+                                return await AutoConnectAsync();
+                            });
 
-                        if (result)
+                            if (result)
+                            {
+                                break;
+                            }
+                            else
+                            {
+                                failedAttempts++;
+                            }
+                        }
+                        else if (IsConnected)
                         {
-                            // Successfully connected - exit the loop
                             break;
                         }
-                        else
-                        {
-                            failedAttempts++;
-                        }
+
+                        // Exponential backoff with jitter
+                        var baseDelay = 15 * Math.Pow(2, Math.Max(0, failedAttempts - 1));
+                        var jitter = new Random().NextDouble() * 5;
+                        var delay = TimeSpan.FromSeconds(Math.Min(baseDelay + jitter, 300));
+
+                        await Task.Delay(delay, token);
                     }
-                    else if (IsConnected)
+                    catch (OperationCanceledException)
                     {
-                        // Already connected - exit
                         break;
                     }
-
-                    // Exponential backoff: 15s, 30s, 60s, 120s, 240s
-                    var delay = TimeSpan.FromSeconds(15 * Math.Pow(2, failedAttempts - 1));
-                    if (delay > TimeSpan.FromMinutes(5)) delay = TimeSpan.FromMinutes(5);
-
-                    await Task.Delay(delay, token);
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Auto-reconnect error: {ex.Message}");
+                        failedAttempts++;
+                        try
+                        {
+                            await Task.Delay(TimeSpan.FromSeconds(30), token);
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            break;
+                        }
+                    }
                 }
-                catch (OperationCanceledException)
-                {
-                    break;
-                }
-                catch (Exception)
-                {
-                    failedAttempts++;
-                    await Task.Delay(TimeSpan.FromSeconds(30), token);
-                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Auto-reconnect task error: {ex.Message}");
             }
         }, token);
     }
 
     public void StopAutoReconnect()
     {
-        _reconnectCts?.Cancel();
-        _reconnectCts?.Dispose();
+        var cts = _reconnectCts;
         _reconnectCts = null;
+
+        if (cts != null)
+        {
+            cts.Cancel();
+            cts.Dispose();
+        }
     }
 
     private void OnDeviceDiscovered(object? sender, BluetoothDevice device)
     {
+        if (_disposed) return;
+
         MainThread.BeginInvokeOnMainThread(() =>
         {
-            // Avoid duplicates
+            // Avoid duplicates (thread-safe via main thread)
             if (!DiscoveredDevices.Any(d => d.Address == device.Address))
             {
                 DiscoveredDevices.Add(device);
@@ -455,6 +537,8 @@ public partial class BluetoothManager : ObservableObject
 
     private void OnConnectionStateChanged(object? sender, BluetoothConnectionState state)
     {
+        if (_disposed) return;
+
         MainThread.BeginInvokeOnMainThread(() =>
         {
             IsConnected = state == BluetoothConnectionState.Connected;
@@ -481,11 +565,14 @@ public partial class BluetoothManager : ObservableObject
 
     private void OnDataReceived(object? sender, byte[] data)
     {
+        if (_disposed) return;
         DataReceived?.Invoke(this, data);
     }
 
     private void OnErrorOccurred(object? sender, string error)
     {
+        if (_disposed) return;
+
         _lastError = error;
         MainThread.BeginInvokeOnMainThread(() =>
         {
@@ -495,4 +582,48 @@ public partial class BluetoothManager : ObservableObject
     }
 
     public string? GetLastError() => _lastError;
+
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (_disposed) return;
+
+        if (disposing)
+        {
+            StopAutoReconnect();
+
+            _scanCts?.Cancel();
+            _scanCts?.Dispose();
+            _scanCts = null;
+
+            // Unsubscribe from events
+            RemoveServiceEvents(_bleService);
+            if (_classicService != null)
+            {
+                RemoveServiceEvents(_classicService);
+            }
+
+            // Dispose services if they implement IDisposable
+            if (_bleService is IDisposable disposableBle)
+            {
+                disposableBle.Dispose();
+            }
+            if (_classicService is IDisposable disposableClassic)
+            {
+                disposableClassic.Dispose();
+            }
+        }
+
+        _disposed = true;
+    }
+
+    ~BluetoothManager()
+    {
+        Dispose(false);
+    }
 }
