@@ -25,19 +25,68 @@ public class MainActivity : MauiAppCompatActivity
             Window?.SetStatusBarColor(Android.Graphics.Color.Black);
         }
 
-        // Request permissions
-        RequestPermissionsAsync();
+        // Request permissions on startup
+        RequestAllBluetoothPermissions();
     }
 
-    private async void RequestPermissionsAsync()
+    private async void RequestAllBluetoothPermissions()
     {
-        if (Build.VERSION.SdkInt >= BuildVersionCodes.S) // Android 12+
+        try
         {
-            await Permissions.RequestAsync<Permissions.Bluetooth>();
+            if (Build.VERSION.SdkInt >= BuildVersionCodes.S) // Android 12+
+            {
+                // Request Bluetooth permissions for Android 12+
+                var btStatus = await Permissions.CheckStatusAsync<Permissions.Bluetooth>();
+                if (btStatus != PermissionStatus.Granted)
+                {
+                    await Permissions.RequestAsync<Permissions.Bluetooth>();
+                }
+
+                // Also request nearby devices permission if needed
+                var nearbyStatus = await Permissions.CheckStatusAsync<Permissions.Nearby>();
+                if (nearbyStatus != PermissionStatus.Granted)
+                {
+                    await Permissions.RequestAsync<Permissions.Nearby>();
+                }
+            }
+            else
+            {
+                // Android < 12 requires Location for Bluetooth scanning
+                var locationStatus = await Permissions.CheckStatusAsync<Permissions.LocationWhenInUse>();
+                if (locationStatus != PermissionStatus.Granted)
+                {
+                    await Permissions.RequestAsync<Permissions.LocationWhenInUse>();
+                }
+            }
         }
-        else
+        catch (Exception ex)
         {
-            await Permissions.RequestAsync<Permissions.LocationWhenInUse>();
+            System.Diagnostics.Debug.WriteLine($"Permission request error: {ex.Message}");
+        }
+    }
+
+    protected override void OnResume()
+    {
+        base.OnResume();
+
+        // Re-check Bluetooth state when app resumes (user might have enabled it)
+        CheckBluetoothState();
+    }
+
+    private void CheckBluetoothState()
+    {
+        try
+        {
+            var adapter = Android.Bluetooth.BluetoothAdapter.DefaultAdapter;
+            if (adapter != null && !adapter.IsEnabled)
+            {
+                // Bluetooth is disabled - we could prompt user to enable it
+                System.Diagnostics.Debug.WriteLine("Bluetooth is disabled");
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Bluetooth check error: {ex.Message}");
         }
     }
 }

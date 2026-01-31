@@ -15,6 +15,8 @@ public class BleService : IBluetoothService
     private ICharacteristic? _writeCharacteristic;
     private ICharacteristic? _readCharacteristic;
     private bool _isInitialized;
+    private bool _permissionsGranted;
+    private bool _showAllDevices = true; // Show all devices, not just OBD-named ones
 
     // Common ELM327 BLE Service and Characteristic UUIDs
     private static readonly Guid[] ServiceUuids = new[]
@@ -60,43 +62,74 @@ public class BleService : IBluetoothService
 
     public async Task<bool> InitializeAsync()
     {
-        if (_isInitialized) return true;
+        if (_isInitialized && _permissionsGranted) return true;
 
         try
         {
-            // Check Bluetooth state
-            if (_ble.State != BluetoothState.On)
+            // Request permissions first (before checking Bluetooth state)
+#if ANDROID
+            // Request all Bluetooth permissions on Android
+            if (Android.OS.Build.VERSION.SdkInt >= Android.OS.BuildVersionCodes.S)
             {
-                ErrorOccurred?.Invoke(this, "Bluetooth is not enabled");
+                // Android 12+ uses new Bluetooth permissions
+                var btStatus = await Permissions.CheckStatusAsync<Permissions.Bluetooth>();
+                if (btStatus != PermissionStatus.Granted)
+                {
+                    btStatus = await Permissions.RequestAsync<Permissions.Bluetooth>();
+                    if (btStatus != PermissionStatus.Granted)
+                    {
+                        ErrorOccurred?.Invoke(this, "Bluetooth permission denied. Please enable in Settings.");
+                        return false;
+                    }
+                }
+            }
+            else
+            {
+                // Android < 12 requires Location for BLE scanning
+                var locationStatus = await Permissions.CheckStatusAsync<Permissions.LocationWhenInUse>();
+                if (locationStatus != PermissionStatus.Granted)
+                {
+                    locationStatus = await Permissions.RequestAsync<Permissions.LocationWhenInUse>();
+                    if (locationStatus != PermissionStatus.Granted)
+                    {
+                        ErrorOccurred?.Invoke(this, "Location permission required for Bluetooth scanning. Please enable in Settings.");
+                        return false;
+                    }
+                }
+            }
+            _permissionsGranted = true;
+#elif IOS
+            _permissionsGranted = true;
+#endif
+
+            // Check Bluetooth state - wait briefly if it's transitioning
+            int retries = 0;
+            while (_ble.State == BluetoothState.Unknown && retries < 10)
+            {
+                await Task.Delay(100);
+                retries++;
+            }
+
+            if (_ble.State == BluetoothState.Unavailable)
+            {
+                ErrorOccurred?.Invoke(this, "Bluetooth is not available on this device");
                 return false;
             }
 
-            // Request permissions on Android
-#if ANDROID
-            var status = await Permissions.CheckStatusAsync<Permissions.Bluetooth>();
-            if (status != PermissionStatus.Granted)
+            if (_ble.State == BluetoothState.Unauthorized)
             {
-                status = await Permissions.RequestAsync<Permissions.Bluetooth>();
-                if (status != PermissionStatus.Granted)
-                {
-                    ErrorOccurred?.Invoke(this, "Bluetooth permission denied");
-                    return false;
-                }
+                ErrorOccurred?.Invoke(this, "Bluetooth access not authorized. Please enable in Settings.");
+                return false;
             }
 
-            var locationStatus = await Permissions.CheckStatusAsync<Permissions.LocationWhenInUse>();
-            if (locationStatus != PermissionStatus.Granted)
+            if (_ble.State != BluetoothState.On)
             {
-                locationStatus = await Permissions.RequestAsync<Permissions.LocationWhenInUse>();
-                if (locationStatus != PermissionStatus.Granted)
-                {
-                    ErrorOccurred?.Invoke(this, "Location permission denied (required for BLE scanning)");
-                    return false;
-                }
+                ErrorOccurred?.Invoke(this, "Please turn on Bluetooth to scan for devices");
+                return false;
             }
-#endif
 
             _adapter.ScanTimeout = 30000; // 30 seconds
+            _adapter.ScanMode = ScanMode.LowLatency; // Faster scanning
             _isInitialized = true;
             return true;
         }
@@ -109,9 +142,22 @@ public class BleService : IBluetoothService
 
     public async Task StartScanningAsync(CancellationToken cancellationToken = default)
     {
-        if (!_isInitialized)
+        // Always try to initialize if not done yet
+        if (!_isInitialized || !_permissionsGranted)
         {
-            await InitializeAsync();
+            var initResult = await InitializeAsync();
+            if (!initResult)
+            {
+                // Error already reported by InitializeAsync
+                return;
+            }
+        }
+
+        // Re-check Bluetooth state before scanning
+        if (_ble.State != BluetoothState.On)
+        {
+            ErrorOccurred?.Invoke(this, "Please turn on Bluetooth to scan for devices");
+            return;
         }
 
         if (_adapter.IsScanning)
@@ -121,15 +167,31 @@ public class BleService : IBluetoothService
 
         try
         {
+            // Scan for ALL devices - don't filter by name
+            // This allows users to find any Bluetooth device including
+            // custom-named OBD adapters, Chinese clones, etc.
             await _adapter.StartScanningForDevicesAsync(
-                serviceUuids: null, // Scan for all devices
+                serviceUuids: null,
                 deviceFilter: device =>
-                    !string.IsNullOrEmpty(device.Name) &&
-                    (device.Name.Contains("OBD", StringComparison.OrdinalIgnoreCase) ||
-                     device.Name.Contains("ELM", StringComparison.OrdinalIgnoreCase) ||
-                     device.Name.Contains("VLINK", StringComparison.OrdinalIgnoreCase) ||
-                     device.Name.Contains("iCar", StringComparison.OrdinalIgnoreCase) ||
-                     device.Name.Contains("VEEPEAK", StringComparison.OrdinalIgnoreCase)),
+                {
+                    // Include all devices with names (filter out unnamed devices)
+                    // But also include unnamed devices since some adapters don't advertise names initially
+                    if (_showAllDevices)
+                    {
+                        return true; // Show everything
+                    }
+                    // Only filter if explicitly requested
+                    if (string.IsNullOrEmpty(device.Name)) return false;
+                    return device.Name.Contains("OBD", StringComparison.OrdinalIgnoreCase) ||
+                           device.Name.Contains("ELM", StringComparison.OrdinalIgnoreCase) ||
+                           device.Name.Contains("VLINK", StringComparison.OrdinalIgnoreCase) ||
+                           device.Name.Contains("iCar", StringComparison.OrdinalIgnoreCase) ||
+                           device.Name.Contains("VEEPEAK", StringComparison.OrdinalIgnoreCase) ||
+                           device.Name.Contains("Bluetooth", StringComparison.OrdinalIgnoreCase) ||
+                           device.Name.Contains("V-LINK", StringComparison.OrdinalIgnoreCase) ||
+                           device.Name.Contains("OBDII", StringComparison.OrdinalIgnoreCase) ||
+                           device.Name.Contains("OBD2", StringComparison.OrdinalIgnoreCase);
+                },
                 allowDuplicatesKey: false,
                 cancellationToken: cancellationToken);
         }
@@ -141,6 +203,11 @@ public class BleService : IBluetoothService
         {
             ErrorOccurred?.Invoke(this, $"Scanning failed: {ex.Message}");
         }
+    }
+
+    public void SetShowAllDevices(bool showAll)
+    {
+        _showAllDevices = showAll;
     }
 
     public async Task StopScanningAsync()

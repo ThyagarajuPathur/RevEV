@@ -12,12 +12,16 @@ public class ClassicBluetoothService : IBluetoothService
     private bool _isInitialized;
     private bool _isConnected;
     private bool _isScanning;
+    private bool _permissionsGranted;
     private CancellationTokenSource? _readCts;
+    private CancellationTokenSource? _discoveryCts;
+    private bool _showAllDevices = true;
 
 #if ANDROID
     private Android.Bluetooth.BluetoothAdapter? _adapter;
     private Android.Bluetooth.BluetoothSocket? _socket;
     private Java.Util.UUID? _sppUuid;
+    private DiscoveryReceiver? _discoveryReceiver;
 #endif
 
     // Standard SPP UUID
@@ -39,24 +43,48 @@ public class ClassicBluetoothService : IBluetoothService
 #endif
     }
 
+    public void SetShowAllDevices(bool showAll)
+    {
+        _showAllDevices = showAll;
+    }
+
     public async Task<bool> InitializeAsync()
     {
-        if (_isInitialized) return true;
+        if (_isInitialized && _permissionsGranted) return true;
 
 #if ANDROID
         try
         {
-            // Request permissions
-            var status = await Permissions.CheckStatusAsync<Permissions.Bluetooth>();
-            if (status != PermissionStatus.Granted)
+            // Request all Bluetooth permissions on Android
+            if (Android.OS.Build.VERSION.SdkInt >= Android.OS.BuildVersionCodes.S)
             {
-                status = await Permissions.RequestAsync<Permissions.Bluetooth>();
-                if (status != PermissionStatus.Granted)
+                // Android 12+ uses new Bluetooth permissions
+                var btStatus = await Permissions.CheckStatusAsync<Permissions.Bluetooth>();
+                if (btStatus != PermissionStatus.Granted)
                 {
-                    ErrorOccurred?.Invoke(this, "Bluetooth permission denied");
-                    return false;
+                    btStatus = await Permissions.RequestAsync<Permissions.Bluetooth>();
+                    if (btStatus != PermissionStatus.Granted)
+                    {
+                        ErrorOccurred?.Invoke(this, "Bluetooth permission denied. Please enable in Settings.");
+                        return false;
+                    }
                 }
             }
+            else
+            {
+                // Android < 12 requires Location for Bluetooth scanning
+                var locationStatus = await Permissions.CheckStatusAsync<Permissions.LocationWhenInUse>();
+                if (locationStatus != PermissionStatus.Granted)
+                {
+                    locationStatus = await Permissions.RequestAsync<Permissions.LocationWhenInUse>();
+                    if (locationStatus != PermissionStatus.Granted)
+                    {
+                        ErrorOccurred?.Invoke(this, "Location permission required for Bluetooth scanning. Please enable in Settings.");
+                        return false;
+                    }
+                }
+            }
+            _permissionsGranted = true;
 
             _adapter = Android.Bluetooth.BluetoothAdapter.DefaultAdapter;
             if (_adapter == null)
@@ -67,7 +95,7 @@ public class ClassicBluetoothService : IBluetoothService
 
             if (!_adapter.IsEnabled)
             {
-                ErrorOccurred?.Invoke(this, "Bluetooth is not enabled");
+                ErrorOccurred?.Invoke(this, "Please turn on Bluetooth to scan for devices");
                 return false;
             }
 
@@ -90,48 +118,100 @@ public class ClassicBluetoothService : IBluetoothService
     public async Task StartScanningAsync(CancellationToken cancellationToken = default)
     {
 #if ANDROID
-        if (!_isInitialized)
+        if (!_isInitialized || !_permissionsGranted)
         {
-            await InitializeAsync();
+            var initResult = await InitializeAsync();
+            if (!initResult) return;
         }
 
         if (_adapter == null) return;
 
+        // Re-check Bluetooth state
+        if (!_adapter.IsEnabled)
+        {
+            ErrorOccurred?.Invoke(this, "Please turn on Bluetooth to scan for devices");
+            return;
+        }
+
         try
         {
             _isScanning = true;
+            _discoveryCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
-            // Get paired devices first (most ELM327 adapters require pairing)
+            // First, report ALL paired/bonded devices (show all, not just OBD-named)
             var pairedDevices = _adapter.BondedDevices;
             if (pairedDevices != null)
             {
                 foreach (var device in pairedDevices)
                 {
-                    if (device.Name != null &&
-                        (device.Name.Contains("OBD", StringComparison.OrdinalIgnoreCase) ||
-                         device.Name.Contains("ELM", StringComparison.OrdinalIgnoreCase) ||
-                         device.Name.Contains("VLINK", StringComparison.OrdinalIgnoreCase)))
+                    if (device == null) continue;
+
+                    // Show all devices or filter if requested
+                    bool includeDevice = _showAllDevices ||
+                        (device.Name != null && IsLikelyOBDDevice(device.Name));
+
+                    if (includeDevice)
                     {
                         var btDevice = new BluetoothDevice
                         {
                             Id = device.Address ?? string.Empty,
-                            Name = device.Name ?? "Unknown",
+                            Name = device.Name ?? "Unknown Device",
                             Address = device.Address ?? string.Empty,
                             DeviceType = BluetoothDeviceType.Classic,
                             IsPaired = true,
                             NativeDevice = device
                         };
-
                         DeviceDiscovered?.Invoke(this, btDevice);
                     }
                 }
             }
 
-            // Discovery for unpaired devices
-            // Note: Discovery requires additional permissions and can be slow
-            // Most users will have their OBD adapters already paired
+            // Now start actual discovery for unpaired devices
+            // Register broadcast receiver for discovered devices
+            _discoveryReceiver = new DiscoveryReceiver(this, _showAllDevices);
+            var filter = new Android.Content.IntentFilter();
+            filter.AddAction(Android.Bluetooth.BluetoothDevice.ActionFound);
+            filter.AddAction(Android.Bluetooth.BluetoothAdapter.ActionDiscoveryFinished);
 
-            await Task.Delay(1000, cancellationToken); // Brief delay for UI update
+            var context = Android.App.Application.Context;
+            if (Android.OS.Build.VERSION.SdkInt >= Android.OS.BuildVersionCodes.Tiramisu)
+            {
+                context.RegisterReceiver(_discoveryReceiver, filter, Android.Content.ReceiverFlags.NotExported);
+            }
+            else
+            {
+#pragma warning disable CA1422
+                context.RegisterReceiver(_discoveryReceiver, filter);
+#pragma warning restore CA1422
+            }
+
+            // Cancel any existing discovery and start new one
+            if (_adapter.IsDiscovering)
+            {
+                _adapter.CancelDiscovery();
+            }
+
+            var started = _adapter.StartDiscovery();
+            if (!started)
+            {
+                ErrorOccurred?.Invoke(this, "Failed to start Bluetooth discovery. Make sure Bluetooth is enabled.");
+            }
+
+            // Wait for discovery to complete or cancellation (max 12 seconds for classic discovery)
+            try
+            {
+                await Task.Delay(12000, _discoveryCts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                // Expected
+            }
+
+            // Stop discovery if still running
+            if (_adapter.IsDiscovering)
+            {
+                _adapter.CancelDiscovery();
+            }
         }
         catch (OperationCanceledException)
         {
@@ -144,6 +224,15 @@ public class ClassicBluetoothService : IBluetoothService
         finally
         {
             _isScanning = false;
+            try
+            {
+                if (_discoveryReceiver != null)
+                {
+                    Android.App.Application.Context.UnregisterReceiver(_discoveryReceiver);
+                    _discoveryReceiver = null;
+                }
+            }
+            catch { /* Ignore unregister errors */ }
         }
 #else
         await Task.CompletedTask;
@@ -151,11 +240,34 @@ public class ClassicBluetoothService : IBluetoothService
 #endif
     }
 
+    private static bool IsLikelyOBDDevice(string name)
+    {
+        if (string.IsNullOrEmpty(name)) return false;
+        return name.Contains("OBD", StringComparison.OrdinalIgnoreCase) ||
+               name.Contains("ELM", StringComparison.OrdinalIgnoreCase) ||
+               name.Contains("VLINK", StringComparison.OrdinalIgnoreCase) ||
+               name.Contains("V-LINK", StringComparison.OrdinalIgnoreCase) ||
+               name.Contains("iCar", StringComparison.OrdinalIgnoreCase) ||
+               name.Contains("VEEPEAK", StringComparison.OrdinalIgnoreCase) ||
+               name.Contains("OBDII", StringComparison.OrdinalIgnoreCase) ||
+               name.Contains("OBD2", StringComparison.OrdinalIgnoreCase);
+    }
+
     public Task StopScanningAsync()
     {
         _isScanning = false;
+        _discoveryCts?.Cancel();
 #if ANDROID
         _adapter?.CancelDiscovery();
+        try
+        {
+            if (_discoveryReceiver != null)
+            {
+                Android.App.Application.Context.UnregisterReceiver(_discoveryReceiver);
+                _discoveryReceiver = null;
+            }
+        }
+        catch { /* Ignore */ }
 #endif
         return Task.CompletedTask;
     }
@@ -356,5 +468,91 @@ public class ClassicBluetoothService : IBluetoothService
             }
         }, token);
     }
+
+    internal void OnDeviceFound(BluetoothDevice device)
+    {
+        DeviceDiscovered?.Invoke(this, device);
+    }
 #endif
 }
+
+#if ANDROID
+/// <summary>
+/// BroadcastReceiver for handling Bluetooth device discovery
+/// </summary>
+internal class DiscoveryReceiver : Android.Content.BroadcastReceiver
+{
+    private readonly ClassicBluetoothService _service;
+    private readonly bool _showAllDevices;
+    private readonly HashSet<string> _discoveredAddresses = new();
+
+    public DiscoveryReceiver(ClassicBluetoothService service, bool showAllDevices)
+    {
+        _service = service;
+        _showAllDevices = showAllDevices;
+    }
+
+    public override void OnReceive(Android.Content.Context? context, Android.Content.Intent? intent)
+    {
+        if (intent == null) return;
+
+        var action = intent.Action;
+
+        if (action == Android.Bluetooth.BluetoothDevice.ActionFound)
+        {
+            Android.Bluetooth.BluetoothDevice? device = null;
+
+            if (Android.OS.Build.VERSION.SdkInt >= Android.OS.BuildVersionCodes.Tiramisu)
+            {
+                device = intent.GetParcelableExtra(
+                    Android.Bluetooth.BluetoothDevice.ExtraDevice,
+                    Java.Lang.Class.FromType(typeof(Android.Bluetooth.BluetoothDevice))) as Android.Bluetooth.BluetoothDevice;
+            }
+            else
+            {
+#pragma warning disable CA1422
+                device = intent.GetParcelableExtra(Android.Bluetooth.BluetoothDevice.ExtraDevice) as Android.Bluetooth.BluetoothDevice;
+#pragma warning restore CA1422
+            }
+
+            if (device != null && !string.IsNullOrEmpty(device.Address))
+            {
+                // Avoid duplicates
+                if (_discoveredAddresses.Contains(device.Address)) return;
+                _discoveredAddresses.Add(device.Address);
+
+                // Filter if not showing all devices
+                if (!_showAllDevices && !string.IsNullOrEmpty(device.Name) && !IsLikelyOBDDevice(device.Name))
+                {
+                    return;
+                }
+
+                var btDevice = new BluetoothDevice
+                {
+                    Id = device.Address,
+                    Name = device.Name ?? "Unknown Device",
+                    Address = device.Address,
+                    DeviceType = BluetoothDeviceType.Classic,
+                    IsPaired = device.BondState == Android.Bluetooth.Bond.Bonded,
+                    NativeDevice = device
+                };
+
+                _service.OnDeviceFound(btDevice);
+            }
+        }
+    }
+
+    private static bool IsLikelyOBDDevice(string name)
+    {
+        if (string.IsNullOrEmpty(name)) return false;
+        return name.Contains("OBD", StringComparison.OrdinalIgnoreCase) ||
+               name.Contains("ELM", StringComparison.OrdinalIgnoreCase) ||
+               name.Contains("VLINK", StringComparison.OrdinalIgnoreCase) ||
+               name.Contains("V-LINK", StringComparison.OrdinalIgnoreCase) ||
+               name.Contains("iCar", StringComparison.OrdinalIgnoreCase) ||
+               name.Contains("VEEPEAK", StringComparison.OrdinalIgnoreCase) ||
+               name.Contains("OBDII", StringComparison.OrdinalIgnoreCase) ||
+               name.Contains("OBD2", StringComparison.OrdinalIgnoreCase);
+    }
+}
+#endif

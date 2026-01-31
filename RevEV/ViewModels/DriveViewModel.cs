@@ -78,7 +78,13 @@ public partial class DriveViewModel : BaseViewModel
 
     public async Task InitializeAsync()
     {
-        await _bluetoothManager.InitializeAsync();
+        // Initialize Bluetooth first and handle failures gracefully
+        var btInitialized = await _bluetoothManager.InitializeAsync();
+        if (!btInitialized)
+        {
+            ConnectionStatus = _bluetoothManager.GetLastError() ?? "Bluetooth initialization failed";
+        }
+
         await _profileManager.LoadProfilesAsync();
         await _audioEngine.InitializeAsync();
 
@@ -88,8 +94,8 @@ public partial class DriveViewModel : BaseViewModel
             await _audioEngine.LoadProfileAsync(_profileManager.CurrentProfile);
         }
 
-        // Auto-connect if enabled
-        if (_settings.AutoConnectOnLaunch && !string.IsNullOrEmpty(_settings.LastConnectedDeviceAddress))
+        // Auto-connect if enabled and Bluetooth is available
+        if (btInitialized && _settings.AutoConnectOnLaunch && !string.IsNullOrEmpty(_settings.LastConnectedDeviceAddress))
         {
             await AutoConnectAsync();
         }
@@ -101,22 +107,25 @@ public partial class DriveViewModel : BaseViewModel
         if (IsScanning)
         {
             await _bluetoothManager.StopScanningAsync();
+            IsScanning = false;
             return;
         }
 
         IsScanning = true;
-        ConnectionStatus = "Scanning...";
+        ConnectionStatus = "Scanning for devices...";
 
         try
         {
             await _bluetoothManager.StartScanningAsync();
         }
+        catch (Exception ex)
+        {
+            ConnectionStatus = $"Scan failed: {ex.Message}";
+        }
         finally
         {
-            IsScanning = false;
-            ConnectionStatus = DiscoveredDevices.Count > 0
-                ? $"Found {DiscoveredDevices.Count} device(s)"
-                : "No devices found";
+            IsScanning = _bluetoothManager.IsScanning;
+            ConnectionStatus = _bluetoothManager.StatusMessage;
         }
     }
 
@@ -127,27 +136,41 @@ public partial class DriveViewModel : BaseViewModel
 
         ConnectionStatus = $"Connecting to {device.DisplayName}...";
 
-        var result = await _bluetoothManager.ConnectAsync(device);
-
-        if (result)
+        try
         {
-            IsConnected = true;
-            ConnectionStatus = $"Connected to {device.DisplayName}";
+            var result = await _bluetoothManager.ConnectAsync(device);
 
-            // Initialize OBD and start polling
-            await _obdHandler.InitializeAsync();
-            await _obdHandler.StartPollingAsync();
-
-            // Start audio playback
-            if (_audioEngine.CurrentProfile != null)
+            if (result)
             {
-                _audioEngine.Play();
-                IsPlaying = true;
+                IsConnected = true;
+                ConnectionStatus = $"Connected to {device.DisplayName}";
+
+                // Initialize OBD and start polling
+                var obdInit = await _obdHandler.InitializeAsync();
+                if (obdInit)
+                {
+                    await _obdHandler.StartPollingAsync();
+                }
+                else
+                {
+                    ConnectionStatus = $"Connected but OBD init failed";
+                }
+
+                // Start audio playback
+                if (_audioEngine.CurrentProfile != null)
+                {
+                    _audioEngine.Play();
+                    IsPlaying = true;
+                }
+            }
+            else
+            {
+                ConnectionStatus = _bluetoothManager.GetLastError() ?? "Connection failed";
             }
         }
-        else
+        catch (Exception ex)
         {
-            ConnectionStatus = "Connection failed";
+            ConnectionStatus = $"Connection error: {ex.Message}";
         }
     }
 
