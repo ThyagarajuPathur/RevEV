@@ -1,0 +1,477 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A1B2C3D4E5F60718A1B2C3D4 /* Services/OBD/OBDLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718A1B2C3D5 /* Services/OBD/OBDLogger.swift */; };
+		A1B2C3D4E5F60718A1B2C3D6 /* Views/Debug/DebugView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718A1B2C3D7 /* Views/Debug/DebugView.swift */; };
+		01DED534122B751423271DC4 /* Views/Demo/DemoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EB67682150481E3BD38FF23 /* Views/Demo/DemoView.swift */; };
+		1000DF9F0E95B52B81618687 /* Services/Audio/RPMAudioMapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE18D3F15BE4DA09C4C5DC96 /* Services/Audio/RPMAudioMapper.swift */; };
+		10D63B760083AC7F3B0E8C87 /* ELM327AdapterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FBB84120529E5144AA4A9CD /* ELM327AdapterTests.swift */; };
+		11423222D412963DB19A2050 /* Services/OBD/OBDService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA7DCA55A67EB6B050838405 /* Services/OBD/OBDService.swift */; };
+		1714E3F645491BD4A88CDC9B /* PIDParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE403FEAF214F5AA7761D8C1 /* PIDParserTests.swift */; };
+		1A9C647FB7473AC37EE624F4 /* Services/Audio/AudioSampleManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB9807E7B294951751B0C2C0 /* Services/Audio/AudioSampleManager.swift */; };
+		1B73FA55C9AA44B2148C502D /* Views/Components/RPMGaugeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 135FE9A027BDA6AF35F2BB07 /* Views/Components/RPMGaugeView.swift */; };
+		1EF145A768BDC069D2EF5329 /* Views/Connection/ConnectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA502B5C984B7A15D48D8DA1 /* Views/Connection/ConnectionView.swift */; };
+		23F94C21B04CF90C2F671C84 /* ViewModels/DemoViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03BD2512461AE1CE33748075 /* ViewModels/DemoViewModel.swift */; };
+		33739389B54DF96456C93CEB /* Views/Components/PedalGaugeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AE29A4F679B62CA64E4D750 /* Views/Components/PedalGaugeView.swift */; };
+		34BC5A772F4E30E94A7C3F6A /* ViewModels/ConnectionViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E4EE6D12C06AFE4F5DA863F /* ViewModels/ConnectionViewModel.swift */; };
+		3FDFAA31058DD5E82FDE2C5C /* Models/VehicleData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25FB7F0C06526FFC347064D0 /* Models/VehicleData.swift */; };
+		44F6F43940D979099878C48D /* Models/OBDCommand.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2ED3981B57583E1781985F5A /* Models/OBDCommand.swift */; };
+		50AF5CC87E1CDF847035C760 /* Services/OBD/OBDError.swift in Sources */ = {isa = PBXBuildFile; fileRef = F926CBDF07154B78434F3EEB /* Services/OBD/OBDError.swift */; };
+		5F18C7862BA1DFE59154F55A /* Services/Bluetooth/ELM327Adapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3382B1A2D30CB2681FAB22E8 /* Services/Bluetooth/ELM327Adapter.swift */; };
+		719BC0304EC13091A308ACC3 /* Views/Dashboard/DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFCBE03E3B0CBEBB20BDA3E4 /* Views/Dashboard/DashboardView.swift */; };
+		725FC045E886885529006CF0 /* Views/Settings/SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78429F53873EDCDC1F5647BE /* Views/Settings/SettingsView.swift */; };
+		78810D4008563BF166ACC5B9 /* Models/BluetoothDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0CC73C32950173B17E4286A /* Models/BluetoothDevice.swift */; };
+		790C6F49C38FC3E0D292EA28 /* Services/Bluetooth/BluetoothManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91092E30F407383761F4B2F1 /* Services/Bluetooth/BluetoothManager.swift */; };
+		86BC340714553970BCC439A8 /* Resources/Audio in Resources */ = {isa = PBXBuildFile; fileRef = DCB83784AB21951733B4446A /* Resources/Audio */; };
+		9D67C0A0D7B7F6400B5B59E7 /* Models/AudioProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70A76D1E24D9906D1230B2D0 /* Models/AudioProfile.swift */; };
+		A84D948A9A1B05D478007718 /* ViewModels/SettingsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A9912CACBF8B547BD173C60 /* ViewModels/SettingsViewModel.swift */; };
+		B746F0FBD30C6D0D44D28D2F /* Extensions/Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9582B71CE38709D20DAA72EB /* Extensions/Extensions.swift */; };
+		CD8C61565A8EE1D0D1B2C626 /* Services/OBD/PIDParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8058686134F857C5E7999D6C /* Services/OBD/PIDParser.swift */; };
+		D0A008DCF76D4A57D9EB8058 /* Services/OBD/UDSProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CF00939E5D03384E7539E9A /* Services/OBD/UDSProtocol.swift */; };
+		D55445F52ACEB75826848E09 /* App/AppCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCE94806E16C1E815DD00AEC /* App/AppCoordinator.swift */; };
+		D83E2E89CD14CA4FEA0DE2B1 /* Services/Audio/EngineAudioEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B10EBD92BC3670A872812EC /* Services/Audio/EngineAudioEngine.swift */; };
+		F2F374D1E358AA1FB047C153 /* ViewModels/DashboardViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D979D3F9E4A06C399BE1FC7 /* ViewModels/DashboardViewModel.swift */; };
+		F65DA5462489FB5975EC4365 /* App/EVEngineSoundApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF3E3579EBFD0674BA12991C /* App/EVEngineSoundApp.swift */; };
+		F6652D9B5A672408990C5E79 /* RPMAudioMapperTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CCE0B8ED09960C52A305E23 /* RPMAudioMapperTests.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		9ADCF2CAED6C30B3F5D185AB /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 46F86FAA6BBF9AC94A7E4595 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 3D4C91345015A4DD0A099400;
+			remoteInfo = EVEngineSound;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		03BD2512461AE1CE33748075 /* ViewModels/DemoViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewModels/DemoViewModel.swift; sourceTree = "<group>"; };
+		0FBB84120529E5144AA4A9CD /* ELM327AdapterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ELM327AdapterTests.swift; sourceTree = "<group>"; };
+		135FE9A027BDA6AF35F2BB07 /* Views/Components/RPMGaugeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/Components/RPMGaugeView.swift; sourceTree = "<group>"; };
+		1B10EBD92BC3670A872812EC /* Services/Audio/EngineAudioEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/Audio/EngineAudioEngine.swift; sourceTree = "<group>"; };
+		1CF00939E5D03384E7539E9A /* Services/OBD/UDSProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/OBD/UDSProtocol.swift; sourceTree = "<group>"; };
+		25FB7F0C06526FFC347064D0 /* Models/VehicleData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models/VehicleData.swift; sourceTree = "<group>"; };
+		2ED3981B57583E1781985F5A /* Models/OBDCommand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models/OBDCommand.swift; sourceTree = "<group>"; };
+		3382B1A2D30CB2681FAB22E8 /* Services/Bluetooth/ELM327Adapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/Bluetooth/ELM327Adapter.swift; sourceTree = "<group>"; };
+		4CCE0B8ED09960C52A305E23 /* RPMAudioMapperTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RPMAudioMapperTests.swift; sourceTree = "<group>"; };
+		5E4EE6D12C06AFE4F5DA863F /* ViewModels/ConnectionViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewModels/ConnectionViewModel.swift; sourceTree = "<group>"; };
+		6D979D3F9E4A06C399BE1FC7 /* ViewModels/DashboardViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewModels/DashboardViewModel.swift; sourceTree = "<group>"; };
+		70A76D1E24D9906D1230B2D0 /* Models/AudioProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models/AudioProfile.swift; sourceTree = "<group>"; };
+		78429F53873EDCDC1F5647BE /* Views/Settings/SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/Settings/SettingsView.swift; sourceTree = "<group>"; };
+		7AE29A4F679B62CA64E4D750 /* Views/Components/PedalGaugeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/Components/PedalGaugeView.swift; sourceTree = "<group>"; };
+		7EB67682150481E3BD38FF23 /* Views/Demo/DemoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/Demo/DemoView.swift; sourceTree = "<group>"; };
+		8058686134F857C5E7999D6C /* Services/OBD/PIDParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/OBD/PIDParser.swift; sourceTree = "<group>"; };
+		81918909E83595C8F4212CCC /* EVEngineSound.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = EVEngineSound.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		858E33F033846B57054E0712 /* EVEngineSoundTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = EVEngineSoundTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		91092E30F407383761F4B2F1 /* Services/Bluetooth/BluetoothManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/Bluetooth/BluetoothManager.swift; sourceTree = "<group>"; };
+		9582B71CE38709D20DAA72EB /* Extensions/Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Extensions/Extensions.swift; sourceTree = "<group>"; };
+		9A9912CACBF8B547BD173C60 /* ViewModels/SettingsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewModels/SettingsViewModel.swift; sourceTree = "<group>"; };
+		AA7DCA55A67EB6B050838405 /* Services/OBD/OBDService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/OBD/OBDService.swift; sourceTree = "<group>"; };
+		AE18D3F15BE4DA09C4C5DC96 /* Services/Audio/RPMAudioMapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/Audio/RPMAudioMapper.swift; sourceTree = "<group>"; };
+		B0CC73C32950173B17E4286A /* Models/BluetoothDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models/BluetoothDevice.swift; sourceTree = "<group>"; };
+		C80BC123FE74B4D0E781491B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		CF3E3579EBFD0674BA12991C /* App/EVEngineSoundApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/EVEngineSoundApp.swift; sourceTree = "<group>"; };
+		DB9807E7B294951751B0C2C0 /* Services/Audio/AudioSampleManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/Audio/AudioSampleManager.swift; sourceTree = "<group>"; };
+		DCB83784AB21951733B4446A /* Resources/Audio */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Resources/Audio; sourceTree = "<group>"; };
+		DCE94806E16C1E815DD00AEC /* App/AppCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/AppCoordinator.swift; sourceTree = "<group>"; };
+		EA502B5C984B7A15D48D8DA1 /* Views/Connection/ConnectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/Connection/ConnectionView.swift; sourceTree = "<group>"; };
+		F926CBDF07154B78434F3EEB /* Services/OBD/OBDError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/OBD/OBDError.swift; sourceTree = "<group>"; };
+		FE403FEAF214F5AA7761D8C1 /* PIDParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PIDParserTests.swift; sourceTree = "<group>"; };
+		FFCBE03E3B0CBEBB20BDA3E4 /* Views/Dashboard/DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/Dashboard/DashboardView.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718A1B2C3D5 /* Services/OBD/OBDLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/OBD/OBDLogger.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718A1B2C3D7 /* Views/Debug/DebugView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/Debug/DebugView.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		6778DD046346DCCCC9E596A7 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		ED2DA7A3D5573A78393CC020 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		1BADDC1D73C1A20F347483E1 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				81918909E83595C8F4212CCC /* EVEngineSound.app */,
+				858E33F033846B57054E0712 /* EVEngineSoundTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		8D3FC6DB5D0827F168A73277 = {
+			isa = PBXGroup;
+			children = (
+				CE882751F8B3EE4485706ED4 /* EVEngineSound */,
+				F850DA3429877D0A2E262956 /* EVEngineSoundTests */,
+				1BADDC1D73C1A20F347483E1 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		CE882751F8B3EE4485706ED4 /* EVEngineSound */ = {
+			isa = PBXGroup;
+			children = (
+				C80BC123FE74B4D0E781491B /* Info.plist */,
+				DCE94806E16C1E815DD00AEC /* App/AppCoordinator.swift */,
+				CF3E3579EBFD0674BA12991C /* App/EVEngineSoundApp.swift */,
+				9582B71CE38709D20DAA72EB /* Extensions/Extensions.swift */,
+				70A76D1E24D9906D1230B2D0 /* Models/AudioProfile.swift */,
+				B0CC73C32950173B17E4286A /* Models/BluetoothDevice.swift */,
+				2ED3981B57583E1781985F5A /* Models/OBDCommand.swift */,
+				25FB7F0C06526FFC347064D0 /* Models/VehicleData.swift */,
+				DB9807E7B294951751B0C2C0 /* Services/Audio/AudioSampleManager.swift */,
+				1B10EBD92BC3670A872812EC /* Services/Audio/EngineAudioEngine.swift */,
+				AE18D3F15BE4DA09C4C5DC96 /* Services/Audio/RPMAudioMapper.swift */,
+				91092E30F407383761F4B2F1 /* Services/Bluetooth/BluetoothManager.swift */,
+				3382B1A2D30CB2681FAB22E8 /* Services/Bluetooth/ELM327Adapter.swift */,
+				F926CBDF07154B78434F3EEB /* Services/OBD/OBDError.swift */,
+				A1B2C3D4E5F60718A1B2C3D5 /* Services/OBD/OBDLogger.swift */,
+				AA7DCA55A67EB6B050838405 /* Services/OBD/OBDService.swift */,
+				8058686134F857C5E7999D6C /* Services/OBD/PIDParser.swift */,
+				1CF00939E5D03384E7539E9A /* Services/OBD/UDSProtocol.swift */,
+				5E4EE6D12C06AFE4F5DA863F /* ViewModels/ConnectionViewModel.swift */,
+				6D979D3F9E4A06C399BE1FC7 /* ViewModels/DashboardViewModel.swift */,
+				03BD2512461AE1CE33748075 /* ViewModels/DemoViewModel.swift */,
+				9A9912CACBF8B547BD173C60 /* ViewModels/SettingsViewModel.swift */,
+				7AE29A4F679B62CA64E4D750 /* Views/Components/PedalGaugeView.swift */,
+				135FE9A027BDA6AF35F2BB07 /* Views/Components/RPMGaugeView.swift */,
+				EA502B5C984B7A15D48D8DA1 /* Views/Connection/ConnectionView.swift */,
+				FFCBE03E3B0CBEBB20BDA3E4 /* Views/Dashboard/DashboardView.swift */,
+				A1B2C3D4E5F60718A1B2C3D7 /* Views/Debug/DebugView.swift */,
+				7EB67682150481E3BD38FF23 /* Views/Demo/DemoView.swift */,
+				78429F53873EDCDC1F5647BE /* Views/Settings/SettingsView.swift */,
+				DCB83784AB21951733B4446A /* Resources/Audio */,
+			);
+			path = EVEngineSound;
+			sourceTree = "<group>";
+		};
+		F850DA3429877D0A2E262956 /* EVEngineSoundTests */ = {
+			isa = PBXGroup;
+			children = (
+				0FBB84120529E5144AA4A9CD /* ELM327AdapterTests.swift */,
+				FE403FEAF214F5AA7761D8C1 /* PIDParserTests.swift */,
+				4CCE0B8ED09960C52A305E23 /* RPMAudioMapperTests.swift */,
+			);
+			path = EVEngineSoundTests;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		3D4C91345015A4DD0A099400 /* EVEngineSound */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A7698C201D2A724C7CAD56C8 /* Build configuration list for PBXNativeTarget "EVEngineSound" */;
+			buildPhases = (
+				99494C080E59D45263DB55A7 /* Sources */,
+				6778DD046346DCCCC9E596A7 /* Frameworks */,
+				A342AAEA3B8E071C11D96578 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = EVEngineSound;
+			productName = EVEngineSound;
+			productReference = 81918909E83595C8F4212CCC /* EVEngineSound.app */;
+			productType = "com.apple.product-type.application";
+		};
+		DFEE19449146DDDB4DD78AD1 /* EVEngineSoundTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 987A36422455648C86529245 /* Build configuration list for PBXNativeTarget "EVEngineSoundTests" */;
+			buildPhases = (
+				889885923DD4EB5770CCACFE /* Sources */,
+				ED2DA7A3D5573A78393CC020 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				551BDF5D8808EFCFB21091A6 /* PBXTargetDependency */,
+			);
+			name = EVEngineSoundTests;
+			productName = EVEngineSoundTests;
+			productReference = 858E33F033846B57054E0712 /* EVEngineSoundTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		46F86FAA6BBF9AC94A7E4595 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1500;
+				LastUpgradeCheck = 1500;
+			};
+			buildConfigurationList = 56283EBD6DD86A56CED63937 /* Build configuration list for PBXProject "EVEngineSound" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 8D3FC6DB5D0827F168A73277;
+			productRefGroup = 1BADDC1D73C1A20F347483E1 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				3D4C91345015A4DD0A099400 /* EVEngineSound */,
+				DFEE19449146DDDB4DD78AD1 /* EVEngineSoundTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A342AAEA3B8E071C11D96578 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				86BC340714553970BCC439A8 /* Resources/Audio in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		889885923DD4EB5770CCACFE /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				10D63B760083AC7F3B0E8C87 /* ELM327AdapterTests.swift in Sources */,
+				1714E3F645491BD4A88CDC9B /* PIDParserTests.swift in Sources */,
+				F6652D9B5A672408990C5E79 /* RPMAudioMapperTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		99494C080E59D45263DB55A7 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D55445F52ACEB75826848E09 /* App/AppCoordinator.swift in Sources */,
+				F65DA5462489FB5975EC4365 /* App/EVEngineSoundApp.swift in Sources */,
+				B746F0FBD30C6D0D44D28D2F /* Extensions/Extensions.swift in Sources */,
+				9D67C0A0D7B7F6400B5B59E7 /* Models/AudioProfile.swift in Sources */,
+				78810D4008563BF166ACC5B9 /* Models/BluetoothDevice.swift in Sources */,
+				44F6F43940D979099878C48D /* Models/OBDCommand.swift in Sources */,
+				3FDFAA31058DD5E82FDE2C5C /* Models/VehicleData.swift in Sources */,
+				1A9C647FB7473AC37EE624F4 /* Services/Audio/AudioSampleManager.swift in Sources */,
+				D83E2E89CD14CA4FEA0DE2B1 /* Services/Audio/EngineAudioEngine.swift in Sources */,
+				1000DF9F0E95B52B81618687 /* Services/Audio/RPMAudioMapper.swift in Sources */,
+				790C6F49C38FC3E0D292EA28 /* Services/Bluetooth/BluetoothManager.swift in Sources */,
+				5F18C7862BA1DFE59154F55A /* Services/Bluetooth/ELM327Adapter.swift in Sources */,
+				50AF5CC87E1CDF847035C760 /* Services/OBD/OBDError.swift in Sources */,
+				A1B2C3D4E5F60718A1B2C3D4 /* Services/OBD/OBDLogger.swift in Sources */,
+				11423222D412963DB19A2050 /* Services/OBD/OBDService.swift in Sources */,
+				CD8C61565A8EE1D0D1B2C626 /* Services/OBD/PIDParser.swift in Sources */,
+				D0A008DCF76D4A57D9EB8058 /* Services/OBD/UDSProtocol.swift in Sources */,
+				34BC5A772F4E30E94A7C3F6A /* ViewModels/ConnectionViewModel.swift in Sources */,
+				F2F374D1E358AA1FB047C153 /* ViewModels/DashboardViewModel.swift in Sources */,
+				23F94C21B04CF90C2F671C84 /* ViewModels/DemoViewModel.swift in Sources */,
+				A84D948A9A1B05D478007718 /* ViewModels/SettingsViewModel.swift in Sources */,
+				33739389B54DF96456C93CEB /* Views/Components/PedalGaugeView.swift in Sources */,
+				1B73FA55C9AA44B2148C502D /* Views/Components/RPMGaugeView.swift in Sources */,
+				1EF145A768BDC069D2EF5329 /* Views/Connection/ConnectionView.swift in Sources */,
+				719BC0304EC13091A308ACC3 /* Views/Dashboard/DashboardView.swift in Sources */,
+				A1B2C3D4E5F60718A1B2C3D6 /* Views/Debug/DebugView.swift in Sources */,
+				01DED534122B751423271DC4 /* Views/Demo/DemoView.swift in Sources */,
+				725FC045E886885529006CF0 /* Views/Settings/SettingsView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		551BDF5D8808EFCFB21091A6 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 3D4C91345015A4DD0A099400 /* EVEngineSound */;
+			targetProxy = 9ADCF2CAED6C30B3F5D185AB /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		191734982F22ABEBB64A1AE0 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = UDE3KFVY3J;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = EVEngineSound/Info.plist;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.evenginesound.app;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		54ECD3B736C66C8688F6C25B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.evenginesound.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/EVEngineSound.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/EVEngineSound";
+			};
+			name = Release;
+		};
+		5AB3A6BF84C2901E813939E6 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.evenginesound.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/EVEngineSound.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/EVEngineSound";
+			};
+			name = Debug;
+		};
+		72FB3ED29B4639D83EC5DB14 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = UDE3KFVY3J;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = EVEngineSound/Info.plist;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.evenginesound.app;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		FA9139DD8B03E3F922556BF8 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		FFE2104CCFAB79205AC64460 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		56283EBD6DD86A56CED63937 /* Build configuration list for PBXProject "EVEngineSound" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FA9139DD8B03E3F922556BF8 /* Debug */,
+				FFE2104CCFAB79205AC64460 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		987A36422455648C86529245 /* Build configuration list for PBXNativeTarget "EVEngineSoundTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5AB3A6BF84C2901E813939E6 /* Debug */,
+				54ECD3B736C66C8688F6C25B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A7698C201D2A724C7CAD56C8 /* Build configuration list for PBXNativeTarget "EVEngineSound" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				72FB3ED29B4639D83EC5DB14 /* Debug */,
+				191734982F22ABEBB64A1AE0 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 46F86FAA6BBF9AC94A7E4595 /* Project object */;
+}
