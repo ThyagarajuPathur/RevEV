@@ -75,46 +75,53 @@ final class PIDParserTests: XCTestCase {
         XCTAssertEqual(PIDParser.parseRPM(from: []), 0.0)
     }
 
-    // MARK: - Hyundai Pedal Position Parsing (bytes 10-11 wrapping counter)
+    // MARK: - Hyundai Pedal Position Parsing (bytes 10-11, 12-bit accel range)
 
     func testHyundaiPedal_fullThrottle() {
-        // Byte 10=3, Byte 11=255 => raw = 3*256 + 255 = 1023 => 1023/1023 = 1.0
-        // Build a response with 62 01 01 header + 12 data bytes (need index 10,11)
-        var bytes: [UInt8] = [0x62, 0x01, 0x01]  // header
-        bytes += Array(repeating: 0x00, count: 10) // data bytes 0-9
-        bytes += [0x03, 0xFF]                       // data bytes 10=3, 11=255
+        // Byte 10=15, Byte 11=255 => raw = 15*256+255 = 4095 => 4095/4095 = 1.0
+        var bytes: [UInt8] = [0x62, 0x01, 0x01]
+        bytes += Array(repeating: 0x00, count: 10)
+        bytes += [0x0F, 0xFF]  // byte10=15, byte11=255
         XCTAssertEqual(PIDParser.parseHyundaiPedal(from: bytes), 1.0, accuracy: 0.001)
     }
 
     func testHyundaiPedal_noThrottle() {
         // Byte 10=0, Byte 11=0 => raw = 0 => 0.0
         var bytes: [UInt8] = [0x62, 0x01, 0x01]
-        bytes += Array(repeating: 0x00, count: 12) // 12 zeros (bytes 0-11)
+        bytes += Array(repeating: 0x00, count: 12)
         XCTAssertEqual(PIDParser.parseHyundaiPedal(from: bytes), 0.0)
     }
 
     func testHyundaiPedal_slightPress() {
-        // Byte 10=0, Byte 11=120 => raw = 120 => 120/1023 ≈ 0.117
+        // Byte 10=0, Byte 11=120 => raw = 120 => 120/4095 ≈ 0.029
         var bytes: [UInt8] = [0x62, 0x01, 0x01]
         bytes += Array(repeating: 0x00, count: 10)
-        bytes += [0x00, 120]  // byte10=0, byte11=120
-        XCTAssertEqual(PIDParser.parseHyundaiPedal(from: bytes), 120.0 / 1023.0, accuracy: 0.001)
+        bytes += [0x00, 120]
+        XCTAssertEqual(PIDParser.parseHyundaiPedal(from: bytes), 120.0 / 4095.0, accuracy: 0.001)
     }
 
     func testHyundaiPedal_midRange() {
-        // Byte 10=2, Byte 11=0 => raw = 512 => 512/1023 ≈ 0.501
+        // Byte 10=8, Byte 11=0 => raw = 2048 => 2048/4095 ≈ 0.50
         var bytes: [UInt8] = [0x62, 0x01, 0x01]
         bytes += Array(repeating: 0x00, count: 10)
-        bytes += [0x02, 0x00]
-        XCTAssertEqual(PIDParser.parseHyundaiPedal(from: bytes), 512.0 / 1023.0, accuracy: 0.001)
+        bytes += [0x08, 0x00]
+        XCTAssertEqual(PIDParser.parseHyundaiPedal(from: bytes), 2048.0 / 4095.0, accuracy: 0.001)
     }
 
     func testHyundaiPedal_wrapAround() {
-        // Byte 10=1, Byte 11=0 => raw = 256 (byte 11 just wrapped from 255→0)
+        // Byte 10=1, Byte 11=0 => raw = 256 => 256/4095 ≈ 0.063
         var bytes: [UInt8] = [0x62, 0x01, 0x01]
         bytes += Array(repeating: 0x00, count: 10)
         bytes += [0x01, 0x00]
-        XCTAssertEqual(PIDParser.parseHyundaiPedal(from: bytes), 256.0 / 1023.0, accuracy: 0.001)
+        XCTAssertEqual(PIDParser.parseHyundaiPedal(from: bytes), 256.0 / 4095.0, accuracy: 0.001)
+    }
+
+    func testHyundaiPedal_deceleration() {
+        // Byte 10=255, Byte 11=200 => raw = 65480 => above regen threshold => 0.0
+        var bytes: [UInt8] = [0x62, 0x01, 0x01]
+        bytes += Array(repeating: 0x00, count: 10)
+        bytes += [0xFF, 0xC8]  // byte10=255 = deceleration/regen
+        XCTAssertEqual(PIDParser.parseHyundaiPedal(from: bytes), 0.0)
     }
 
     func testHyundaiPedal_emptyData() {
@@ -122,7 +129,6 @@ final class PIDParserTests: XCTestCase {
     }
 
     func testHyundaiPedal_tooShort() {
-        // Only header, no data — should return 0
         XCTAssertEqual(PIDParser.parseHyundaiPedal(from: [0x62, 0x01, 0x01]), 0.0)
     }
 
