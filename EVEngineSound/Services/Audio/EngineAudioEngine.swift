@@ -105,10 +105,6 @@ final class EngineAudioEngine: ObservableObject {
     /// Tracks the previous intent to detect transitions (gas→coast, coast→gas).
     private var previousIntent: DriverIntent = .coasting
 
-    /// Boosted correction factor used during coasting for tighter RPM tracking.
-    /// Normal correction = 0.02, coasting = 0.08 (4x tighter).
-    private let coastingCorrectionFactor: Double = 0.08
-
     /// Concurrency guard
     private let updateQueue = DispatchQueue(label: "com.revev.audioengine.update")
 
@@ -215,15 +211,12 @@ final class EngineAudioEngine: ObservableObject {
         if newIntent != previousIntent {
             switch newIntent {
             case .coasting:
-                // Pedal released — driver is no longer accelerating.
-                // Kill any positive (upward) velocity to prevent overshoot.
+                // Pedal released — cap targetRate so we never extrapolate RPM upward.
+                // The natural velocity smoothing (6%/frame) will bring rpmRate down
+                // gradually, and the correction factor pulls toward actual OBD RPM.
+                // No harsh rpmRate damping — that caused an audible pitch freeze.
                 targetRate = min(targetRate, 0)
-                // Dampen current velocity immediately (0.3x = 70% reduction).
-                // Without this, rpmRate would take many frames to catch up.
-                rpmRate *= 0.3
             case .accelerating:
-                // Pedal pressed — allow normal velocity extrapolation.
-                // No special action needed; the velocity system handles this.
                 break
             }
             previousIntent = newIntent
@@ -354,19 +347,15 @@ final class EngineAudioEngine: ObservableObject {
             : pedalSmoothingPress     // pressing on  → quick response
         renderedPedal += (targetPedal - renderedPedal) * pedalAlpha
 
-        // 3. Pedal-modulated extrapolation: scale by raw target pedal (not smoothed)
-        //    so overshoot prevention kicks in immediately when pedal is released.
-        //    min 0.05 ensures idle RPM still gets minimal smoothing.
-        let confidence = max(targetPedal, 0.05)
+        // 3. Pedal-modulated extrapolation: scale by smoothed renderedPedal so the
+        //    extrapolation fades at the same rate as the audio crossfade (~200ms).
+        //    Overshoot prevention comes from targetRate being capped at 0 (step 1),
+        //    not from killing confidence instantly.
+        let confidence = max(renderedPedal, 0.05)
         renderedRPM += rpmRate * dt * confidence
 
         // 4. Drift correction toward actual OBD value.
-        //    When coasting, use 4x stronger correction (0.08 vs 0.02) so rendered RPM
-        //    snaps to actual faster — no reason to extrapolate when pedal is released.
-        let correctionThisFrame = previousIntent == .coasting
-            ? coastingCorrectionFactor
-            : correctionFactor
-        renderedRPM += (targetRPM - renderedRPM) * correctionThisFrame
+        renderedRPM += (targetRPM - renderedRPM) * correctionFactor
 
         // 5. Clamp
         renderedRPM = max(0, renderedRPM)
