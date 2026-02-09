@@ -66,18 +66,18 @@ final class OBDService: VehicleDataProvider, ObservableObject {
         isPolling = true
         logger?.logParsed("Polling started (mode: \(useHyundai ? "Hyundai VMCU" : "Standard OBD-II"))")
 
+        // Unified polling: both RPM and pedal come from the same 220101 response,
+        // so we parse both from a single OBD request via pollBMS().
+        // This doubles the effective update rate (14Hz for BOTH values vs 7Hz each).
         pollingTask = Task { [weak self] in
             guard let self else { return }
-            var requestRPM = true
 
             while !Task.isCancelled {
                 do {
-                    if requestRPM {
-                        self.latestRPM = try await self.pollRPM()
-                        self.logger?.logParsed("RPM: \(Int(self.latestRPM))")
-                    } else {
-                        self.latestPedal = try await self.pollPedal()
-                    }
+                    let result = try await self.pollBMS()
+                    self.latestRPM = result.rpm
+                    self.latestPedal = result.pedal
+                    self.logger?.logParsed("RPM: \(Int(result.rpm))  Pedal: \(String(format: "%.1f%%", result.pedal * 100))")
 
                     // Publish raw data — audio engine interpolates at 60fps
                     let data = VehicleData(
@@ -93,9 +93,6 @@ final class OBDService: VehicleDataProvider, ObservableObject {
                 } catch {
                     self.logger?.logError("Poll error: \(error.localizedDescription)")
                 }
-
-                // Always alternate between RPM and pedal
-                requestRPM.toggle()
 
                 try? await Task.sleep(nanoseconds: self.pollingIntervalNanos)
             }

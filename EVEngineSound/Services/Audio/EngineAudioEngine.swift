@@ -68,6 +68,33 @@ final class EngineAudioEngine: ObservableObject {
 
     private var updateCount: Int = 0
 
+    // MARK: - Intent Detection (accel-pedal only, no brake dependency)
+    //
+    // The accelerator pedal is a *leading indicator* — it changes BEFORE RPM does.
+    // When the driver lifts off the pedal, we detect the intent change immediately
+    // (same OBD cycle) and stop extrapolating upward, preventing the ~500 RPM
+    // overshoot documented in RPM_SMOOTHING.md.
+    //
+    // Two states only (no brake pedal needed):
+    //   .accelerating — pedal > 10%: confident forward extrapolation
+    //   .coasting     — pedal <= 10%: kill velocity, track actual RPM closely
+
+    private enum DriverIntent {
+        case accelerating  // pedal > 10%  → extrapolate confidently
+        case coasting      // pedal <= 10% → stop extrapolation, track OBD closely
+    }
+
+    /// Pedal threshold below which we consider the driver "coasting" (not accelerating).
+    /// 10% avoids noise from a resting foot on the pedal.
+    private let coastingThreshold: Double = 0.10
+
+    /// Tracks the previous intent to detect transitions (gas→coast, coast→gas).
+    private var previousIntent: DriverIntent = .coasting
+
+    /// Boosted correction factor used during coasting for tighter RPM tracking.
+    /// Normal correction = 0.02, coasting = 0.08 (4x tighter).
+    private let coastingCorrectionFactor: Double = 0.08
+
     /// Concurrency guard
     private let updateQueue = DispatchQueue(label: "com.revev.audioengine.update")
 
@@ -126,6 +153,7 @@ final class EngineAudioEngine: ObservableObject {
         renderedRPM = 0
         renderedPedal = 0
         outputRPM = 0
+        previousIntent = .coasting
     }
 
     /// Switch to a different sound profile without full teardown.
@@ -134,7 +162,15 @@ final class EngineAudioEngine: ObservableObject {
     }
 
     /// Called externally (e.g. from OBD at ~14Hz) to push new vehicle data.
-    /// Computes target velocity — actual rpmRate smooths toward it each frame.
+    /// Computes target velocity and detects driver intent from pedal position.
+    ///
+    /// Intent detection flow:
+    /// 1. Pedal > 10% → .accelerating → normal velocity extrapolation
+    /// 2. Pedal <= 10% → .coasting → kill positive velocity, dampen rpmRate
+    ///
+    /// This prevents the overshoot problem: when the driver lifts the pedal,
+    /// we detect it in the SAME OBD cycle (before RPM drops) and immediately
+    /// stop extrapolating upward.
     func update(rpm: Double, pedalPosition: Double) {
         let now = CACurrentMediaTime()
 
@@ -151,11 +187,36 @@ final class EngineAudioEngine: ObservableObject {
         prevOBDRpm = rpm
         prevOBDTime = now
         targetRPM = rpm
-        renderedPedal = 1.0 // Hardcoded to 100% throttle
+        renderedPedal = pedalPosition  // Real pedal data from bytes 10-11
+
+        // --- Intent detection (accelerator-only, no brake pedal needed) ---
+        // The pedal is a leading indicator: it changes BEFORE RPM does.
+        // Detecting pedal release immediately prevents ~500 RPM overshoot.
+        let newIntent: DriverIntent = pedalPosition > coastingThreshold
+            ? .accelerating
+            : .coasting
+
+        if newIntent != previousIntent {
+            switch newIntent {
+            case .coasting:
+                // Pedal released — driver is no longer accelerating.
+                // Kill any positive (upward) velocity to prevent overshoot.
+                targetRate = min(targetRate, 0)
+                // Dampen current velocity immediately (0.3x = 70% reduction).
+                // Without this, rpmRate would take many frames to catch up.
+                rpmRate *= 0.3
+            case .accelerating:
+                // Pedal pressed — allow normal velocity extrapolation.
+                // No special action needed; the velocity system handles this.
+                break
+            }
+            previousIntent = newIntent
+        }
 
         updateCount += 1
         if updateCount % 50 == 1 {
-            logger?.logParsed("Audio: OBD=\(Int(rpm)) out=\(Int(outputRPM)) rate=\(Int(rpmRate))/s running=\(isRunning)")
+            let intentStr = previousIntent == .accelerating ? "ACC" : "COAST"
+            logger?.logParsed("Audio: OBD=\(Int(rpm)) out=\(Int(outputRPM)) rate=\(Int(rpmRate))/s pedal=\(String(format: "%.0f%%", pedalPosition * 100)) \(intentStr)")
         }
     }
 
@@ -267,11 +328,22 @@ final class EngineAudioEngine: ObservableObject {
         // 1. Smoothly steer rpmRate toward targetRate (no sudden velocity changes)
         rpmRate += (targetRate - rpmRate) * rateSmoothingPerFrame
 
-        // 2. Extrapolate using smooth velocity
-        renderedRPM += rpmRate * dt
+        // 2. Pedal-modulated extrapolation: scale by pedal position (0.0–1.0).
+        //    - Full pedal (1.0) → confident extrapolation between OBD readings
+        //    - Zero pedal (0.0) → no extrapolation, just track actual RPM
+        //    - min 0.05 ensures idle RPM still gets minimal smoothing
+        //    This naturally prevents overshoot: when pedal is released, extrapolation
+        //    stops immediately (same frame) even before the next OBD reading arrives.
+        let confidence = max(renderedPedal, 0.05)
+        renderedRPM += rpmRate * dt * confidence
 
-        // 3. Gently correct drift toward actual OBD value
-        renderedRPM += (targetRPM - renderedRPM) * correctionFactor
+        // 3. Drift correction toward actual OBD value.
+        //    When coasting, use 4x stronger correction (0.08 vs 0.02) so rendered RPM
+        //    snaps to actual faster — no reason to extrapolate when pedal is released.
+        let correctionThisFrame = previousIntent == .coasting
+            ? coastingCorrectionFactor
+            : correctionFactor
+        renderedRPM += (targetRPM - renderedRPM) * correctionThisFrame
 
         // 4. Clamp
         renderedRPM = max(0, renderedRPM)
