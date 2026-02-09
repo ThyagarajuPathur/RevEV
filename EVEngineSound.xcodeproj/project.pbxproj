@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		A1B2C3D4E5F60718A1B2C3D4 /* Services/OBD/OBDLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718A1B2C3D5 /* Services/OBD/OBDLogger.swift */; };
 		A1B2C3D4E5F60718A1B2C3D6 /* Views/Debug/DebugView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718A1B2C3D7 /* Views/Debug/DebugView.swift */; };
+		ACCE1D8B3F9A20E1C7B5D401 /* Views/Debug/AccPedalDebugView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACCE1D8B3F9A20E1C7B5D402 /* Views/Debug/AccPedalDebugView.swift */; };
 		01DED534122B751423271DC4 /* Views/Demo/DemoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EB67682150481E3BD38FF23 /* Views/Demo/DemoView.swift */; };
 		1000DF9F0E95B52B81618687 /* Services/Audio/RPMAudioMapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE18D3F15BE4DA09C4C5DC96 /* Services/Audio/RPMAudioMapper.swift */; };
 		10D63B760083AC7F3B0E8C87 /* ELM327AdapterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FBB84120529E5144AA4A9CD /* ELM327AdapterTests.swift */; };
@@ -87,6 +88,7 @@
 		FFCBE03E3B0CBEBB20BDA3E4 /* Views/Dashboard/DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/Dashboard/DashboardView.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60718A1B2C3D5 /* Services/OBD/OBDLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/OBD/OBDLogger.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60718A1B2C3D7 /* Views/Debug/DebugView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/Debug/DebugView.swift; sourceTree = "<group>"; };
+		ACCE1D8B3F9A20E1C7B5D402 /* Views/Debug/AccPedalDebugView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/Debug/AccPedalDebugView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -154,6 +156,7 @@
 				135FE9A027BDA6AF35F2BB07 /* Views/Components/RPMGaugeView.swift */,
 				EA502B5C984B7A15D48D8DA1 /* Views/Connection/ConnectionView.swift */,
 				FFCBE03E3B0CBEBB20BDA3E4 /* Views/Dashboard/DashboardView.swift */,
+				ACCE1D8B3F9A20E1C7B5D402 /* Views/Debug/AccPedalDebugView.swift */,
 				A1B2C3D4E5F60718A1B2C3D7 /* Views/Debug/DebugView.swift */,
 				7EB67682150481E3BD38FF23 /* Views/Demo/DemoView.swift */,
 				78429F53873EDCDC1F5647BE /* Views/Settings/SettingsView.swift */,
@@ -289,6 +292,7 @@
 				1B73FA55C9AA44B2148C502D /* Views/Components/RPMGaugeView.swift in Sources */,
 				1EF145A768BDC069D2EF5329 /* Views/Connection/ConnectionView.swift in Sources */,
 				719BC0304EC13091A308ACC3 /* Views/Dashboard/DashboardView.swift in Sources */,
+				ACCE1D8B3F9A20E1C7B5D401 /* Views/Debug/AccPedalDebugView.swift in Sources */,
 				A1B2C3D4E5F60718A1B2C3D6 /* Views/Debug/DebugView.swift in Sources */,
 				01DED534122B751423271DC4 /* Views/Demo/DemoView.swift in Sources */,
 				725FC045E886885529006CF0 /* Views/Settings/SettingsView.swift in Sources */,
