@@ -29,9 +29,14 @@ struct RPMAudioMapper {
         let lowGain = Float(cos(t * .pi / 2))
         let highGain = Float(sin(t * .pi / 2))
 
-        // --- Throttle axis crossfade ---
-        let onGain = Float(max(pedalPosition, 0.05))   // minimum idle
-        let offGain: Float = 1.0 - onGain
+        // --- Throttle axis crossfade (equal-power cosine, matches RPM axis) ---
+        // Linear crossfade (old: onGain + offGain = 1) causes a -3dB energy dip
+        // at the midpoint. Equal-power (sin² + cos² = 1) keeps constant perceived
+        // volume through the entire on→off transition, eliminating the audible
+        // break when lifting off the accelerator.
+        let pedalClamped = clamp(max(pedalPosition, 0.05), min: 0, max: 1)
+        let onGain = Float(sin(pedalClamped * .pi / 2))
+        let offGain = Float(cos(pedalClamped * .pi / 2))
 
         // --- Combined layer gains ---
         let onLow  = onGain * lowGain
