@@ -51,9 +51,10 @@ final class EngineAudioEngine: ObservableObject {
     private var renderedPedal: Double = 0
 
     /// Pedal smoothing rates (EMA alpha per frame at 60fps).
-    /// Release (0.08): ~12 frames / ~200ms for a smooth deceleration transition.
+    /// Release (0.20): ~5 frames / ~100ms — fast enough to avoid prolonged blend
+    ///   of acceleration + deceleration layers, slow enough to avoid a hard cut.
     /// Press (0.25):   ~4 frames / ~65ms for responsive acceleration feel.
-    private let pedalSmoothingRelease: Double = 0.08
+    private let pedalSmoothingRelease: Double = 0.20
     private let pedalSmoothingPress: Double = 0.25
 
     /// Final output RPM — one last smoothing pass before the mapper
@@ -211,11 +212,19 @@ final class EngineAudioEngine: ObservableObject {
         if newIntent != previousIntent {
             switch newIntent {
             case .coasting:
-                // Pedal released — cap targetRate so we never extrapolate RPM upward.
-                // The natural velocity smoothing (6%/frame) will bring rpmRate down
-                // gradually, and the correction factor pulls toward actual OBD RPM.
-                // No harsh rpmRate damping — that caused an audible pitch freeze.
+                // Pedal released — two things must happen simultaneously:
+                //
+                // 1. Cap targetRate at 0 so velocity target can't be positive.
                 targetRate = min(targetRate, 0)
+                //
+                // 2. Zero any positive rpmRate so pitch stops rising IMMEDIATELY.
+                //    Without this, rpmRate stays at e.g. +5000 for many frames,
+                //    causing pitch to keep climbing while off-layers (deceleration
+                //    sound) fade in — a mismatch that sounds like a break.
+                //    Pitch holds flat briefly (~70ms until next OBD reading shows
+                //    lower RPM), then naturally falls. This matches real engine
+                //    behavior: lift off → brief plateau → deceleration.
+                rpmRate = min(rpmRate, 0)
             case .accelerating:
                 break
             }
