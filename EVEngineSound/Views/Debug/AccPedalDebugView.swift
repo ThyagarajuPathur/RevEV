@@ -102,7 +102,14 @@ final class AccPedalDebugViewModel: ObservableObject {
         cancellable = nil
         sendRaw("ATSH7E4")
         appendLog("Restored header to 7E4 (BMS)")
-        status = "Cleaned up — header restored to 7E4"
+
+        // Restart OBD polling that was stopped in setup().
+        // Small delay lets the ATSH7E4 command complete before polls resume.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            self?.obdService.startPolling()
+            self?.appendLog("OBD polling restarted")
+        }
+        status = "Cleaned up — restarting OBD…"
     }
 
     // MARK: - Private Helpers

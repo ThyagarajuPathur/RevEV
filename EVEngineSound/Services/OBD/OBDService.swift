@@ -66,18 +66,33 @@ final class OBDService: VehicleDataProvider, ObservableObject {
         isPolling = true
         logger?.logParsed("Polling started (mode: \(useHyundai ? "Hyundai VMCU" : "Standard OBD-II"))")
 
-        // Unified polling: both RPM and pedal come from the same 220101 response,
+        // Hyundai mode: both RPM and pedal come from the same 220101 response,
         // so we parse both from a single OBD request via pollBMS().
         // This doubles the effective update rate (14Hz for BOTH values vs 7Hz each).
+        //
+        // Standard OBD-II mode: alternate between RPM (010C) and pedal (0149) polls.
         pollingTask = Task { [weak self] in
             guard let self else { return }
+            var requestRPM = true
 
             while !Task.isCancelled {
                 do {
-                    let result = try await self.pollBMS()
-                    self.latestRPM = result.rpm
-                    self.latestPedal = result.pedal
-                    self.logger?.logParsed("RPM: \(Int(result.rpm))  Pedal: \(String(format: "%.1f%%", result.pedal * 100))")
+                    if self.useHyundai {
+                        // Unified: single 220101 request gives both RPM and pedal
+                        let result = try await self.pollBMS()
+                        self.latestRPM = result.rpm
+                        self.latestPedal = result.pedal
+                        self.logger?.logParsed("RPM: \(Int(result.rpm))  Pedal: \(String(format: "%.1f%%", result.pedal * 100))")
+                    } else {
+                        // Standard OBD-II: alternate between RPM and pedal PIDs
+                        if requestRPM {
+                            self.latestRPM = try await self.pollRPM()
+                            self.logger?.logParsed("RPM: \(Int(self.latestRPM))")
+                        } else {
+                            self.latestPedal = try await self.pollPedal()
+                        }
+                        requestRPM.toggle()
+                    }
 
                     // Publish raw data — audio engine interpolates at 60fps
                     let data = VehicleData(
