@@ -40,7 +40,21 @@ final class EngineAudioEngine: ObservableObject {
 
     /// Rendered RPM — extrapolated at 60fps, fed to audio
     private var renderedRPM: Double = 0
+
+    /// Raw pedal target from OBD (set at ~14Hz). Used for intent detection and
+    /// extrapolation confidence, but NOT directly for the audio throttle crossfade.
+    private var targetPedal: Double = 0
+
+    /// Smoothed pedal for audio — EMA-smoothed version of targetPedal.
+    /// This is what the mapper sees for throttle-axis crossfade (on/off layers).
+    /// Asymmetric smoothing: release is slower than press to avoid audible breaks.
     private var renderedPedal: Double = 0
+
+    /// Pedal smoothing rates (EMA alpha per frame at 60fps).
+    /// Release (0.08): ~12 frames / ~200ms for a smooth deceleration transition.
+    /// Press (0.25):   ~4 frames / ~65ms for responsive acceleration feel.
+    private let pedalSmoothingRelease: Double = 0.08
+    private let pedalSmoothingPress: Double = 0.25
 
     /// Final output RPM — one last smoothing pass before the mapper
     private var outputRPM: Double = 0
@@ -151,6 +165,7 @@ final class EngineAudioEngine: ObservableObject {
         targetRate = 0
         prevOBDTime = 0
         renderedRPM = 0
+        targetPedal = 0
         renderedPedal = 0
         outputRPM = 0
         previousIntent = .coasting
@@ -187,9 +202,10 @@ final class EngineAudioEngine: ObservableObject {
         prevOBDRpm = rpm
         prevOBDTime = now
         targetRPM = rpm
-        renderedPedal = pedalPosition  // Real pedal data from bytes 10-11
+        targetPedal = pedalPosition  // Raw pedal target — smoothed per-frame in displayLink
 
         // --- Intent detection (accelerator-only, no brake pedal needed) ---
+        // Uses raw pedalPosition (not smoothed) so intent changes are immediate.
         // The pedal is a leading indicator: it changes BEFORE RPM does.
         // Detecting pedal release immediately prevents ~500 RPM overshoot.
         let newIntent: DriverIntent = pedalPosition > coastingThreshold
@@ -328,16 +344,23 @@ final class EngineAudioEngine: ObservableObject {
         // 1. Smoothly steer rpmRate toward targetRate (no sudden velocity changes)
         rpmRate += (targetRate - rpmRate) * rateSmoothingPerFrame
 
-        // 2. Pedal-modulated extrapolation: scale by pedal position (0.0–1.0).
-        //    - Full pedal (1.0) → confident extrapolation between OBD readings
-        //    - Zero pedal (0.0) → no extrapolation, just track actual RPM
-        //    - min 0.05 ensures idle RPM still gets minimal smoothing
-        //    This naturally prevents overshoot: when pedal is released, extrapolation
-        //    stops immediately (same frame) even before the next OBD reading arrives.
-        let confidence = max(renderedPedal, 0.05)
+        // 2. Smooth the pedal value for audio crossfade (asymmetric EMA).
+        //    Release is slower (~200ms) to avoid an audible break between
+        //    acceleration and coasting layers. Press is faster (~65ms) for
+        //    responsive throttle feel. Intent detection still uses the raw
+        //    targetPedal so RPM overshoot prevention is unaffected.
+        let pedalAlpha = targetPedal < renderedPedal
+            ? pedalSmoothingRelease   // lifting off → slow fade
+            : pedalSmoothingPress     // pressing on  → quick response
+        renderedPedal += (targetPedal - renderedPedal) * pedalAlpha
+
+        // 3. Pedal-modulated extrapolation: scale by raw target pedal (not smoothed)
+        //    so overshoot prevention kicks in immediately when pedal is released.
+        //    min 0.05 ensures idle RPM still gets minimal smoothing.
+        let confidence = max(targetPedal, 0.05)
         renderedRPM += rpmRate * dt * confidence
 
-        // 3. Drift correction toward actual OBD value.
+        // 4. Drift correction toward actual OBD value.
         //    When coasting, use 4x stronger correction (0.08 vs 0.02) so rendered RPM
         //    snaps to actual faster — no reason to extrapolate when pedal is released.
         let correctionThisFrame = previousIntent == .coasting
@@ -345,10 +368,10 @@ final class EngineAudioEngine: ObservableObject {
             : correctionFactor
         renderedRPM += (targetRPM - renderedRPM) * correctionThisFrame
 
-        // 4. Clamp
+        // 5. Clamp
         renderedRPM = max(0, renderedRPM)
 
-        // 5. Final output smoothing — catches any remaining micro-kinks
+        // 6. Final output smoothing — catches any remaining micro-kinks
         outputRPM += (renderedRPM - outputRPM) * outputSmoothing
 
         let rpm = outputRPM
