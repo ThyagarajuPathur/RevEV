@@ -51,9 +51,6 @@ enum OBDCommand {
     /// Response: 62 01 01 <data>; RPM at data offset 53-54 (signed Int16 big-endian)
     static let hyundaiRPMRequest = "220101"
 
-    /// Accelerator Pedal DID 0x0154 (service 0x22, ECU 7E4)
-    static let hyundaiPedalRequest = "220154"
-
     // MARK: - UDS Service 0x22 (Read Data By Identifier)
 
     /// UDS service ID for Read Data By Identifier
@@ -62,11 +59,6 @@ enum OBDCommand {
     static let udsPositiveResponse: UInt8 = 0x62
     /// KWP service 0x21 positive response
     static let kwpPositiveResponse: UInt8 = 0x61
-
-    /// Hyundai/Kia Motor RPM DID 0x0101
-    static let hyundaiRPM_DID: UInt16 = 0x0101
-    /// Hyundai/Kia Accelerator Pedal DID 0x0154
-    static let hyundaiPedal_DID: UInt16 = 0x0154
 
     /// Build a UDS read request command string for the given DID
     static func udsReadRequest(did: UInt16) -> String {

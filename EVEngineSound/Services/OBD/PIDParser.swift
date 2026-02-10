@@ -30,11 +30,6 @@ enum PIDParser {
         return Double(abs(rpm))
     }
 
-    /// Convenience dispatcher: parses RPM from either standard OBD or Hyundai UDS.
-    static func parseRPM(from bytes: [UInt8], isUDS: Bool = false) -> Double {
-        isUDS ? parseHyundaiRPM(from: bytes) : parseStandardRPM(from: bytes)
-    }
-
     /// Find a header byte sequence in the response.
     /// Returns the index of the first byte AFTER the header (i.e., first data byte).
     private static func findHeader(_ header: [UInt8], in bytes: [UInt8]) -> Int? {
