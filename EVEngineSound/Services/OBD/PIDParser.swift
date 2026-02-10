@@ -30,6 +30,11 @@ enum PIDParser {
         return Double(abs(rpm))
     }
 
+    /// Convenience dispatcher: parses RPM from either standard OBD or Hyundai UDS.
+    static func parseRPM(from bytes: [UInt8], isUDS: Bool = false) -> Double {
+        isUDS ? parseHyundaiRPM(from: bytes) : parseStandardRPM(from: bytes)
+    }
+
     /// Find a header byte sequence in the response.
     /// Returns the index of the first byte AFTER the header (i.e., first data byte).
     private static func findHeader(_ header: [UInt8], in bytes: [UInt8]) -> Int? {
@@ -44,29 +49,25 @@ enum PIDParser {
 
     // MARK: - Pedal Position Parsing
 
-    /// Max raw pedal value for normalization (12-bit, 0-4095).
-    /// Byte 10 goes 0→15 during acceleration, so max = 15*256+255 = 4095.
-    private static let pedalRawMax: Double = 4095.0
-
-    /// Threshold above which the raw value represents deceleration/regen, not acceleration.
-    /// During deceleration byte 10 reads 255 downward — raw values ≥ this are "off throttle".
-    private static let regenThreshold: Double = 4096.0
+    /// Max raw pedal value for normalization.
+    /// Observed range can go up to ~5000 during full acceleration.
+    private static let pedalRawMax: Double = 5000.0
 
     /// Parse accelerator pedal from Hyundai/Kia BMS DID 0x0101 response (ECU 7E4).
     ///
     /// Response: [62, 01, 01, <data...>]
-    /// Pedal at data bytes 10-11 (unsigned 16-bit big-endian):
-    ///   - Acceleration: byte10 = 0→15, byte11 = 0→255 → raw 0→4095
-    ///   - Deceleration/regen: byte10 = 255 downward → raw ≥ 4096 → treated as 0% throttle
+    /// Pedal at data bytes 10-11 (signed Int16 big-endian):
+    ///   - Acceleration: positive values 0→4095
+    ///   - Deceleration/regen: negative values → treated as 0% throttle
     static func parseHyundaiPedal(from bytes: [UInt8]) -> Double {
         guard let dataStart = findHeader([0x62, 0x01, 0x01], in: bytes) else { return 0 }
         guard dataStart + 11 < bytes.count else { return 0 }
-        let high = UInt16(bytes[dataStart + 10])
-        let low  = UInt16(bytes[dataStart + 11])
-        let raw = Double(high * 256 + low)
-        // Deceleration/regen values (byte10 >= 16) → off throttle
-        if raw >= regenThreshold { return 0 }
-        return min(1.0, max(0.0, raw / pedalRawMax))
+        let a = bytes[dataStart + 10]   // high byte
+        let b = bytes[dataStart + 11]   // low byte
+        let raw = Int(Int16(bitPattern: UInt16(a) << 8 | UInt16(b)))
+        // Negative values = regen/deceleration → off throttle
+        if raw <= 0 { return 0 }
+        return min(1.0, Double(raw) / pedalRawMax)
     }
 
     /// Parse standard OBD-II pedal position (PID 0x49).

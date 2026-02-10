@@ -51,6 +51,9 @@ enum OBDCommand {
     /// Response: 62 01 01 <data>; RPM at data offset 53-54 (signed Int16 big-endian)
     static let hyundaiRPMRequest = "220101"
 
+    /// Accelerator Pedal DID 0x0154 (service 0x22, ECU 7E4)
+    static let hyundaiPedalRequest = "220154"
+
     // MARK: - UDS Service 0x22 (Read Data By Identifier)
 
     /// UDS service ID for Read Data By Identifier
