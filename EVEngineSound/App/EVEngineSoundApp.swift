@@ -42,6 +42,14 @@ private struct ContentView: View {
                     }
             }
 
+            AccPedalDebugView(
+                bluetoothManager: coordinator.bluetoothManager,
+                obdService: coordinator.obdService
+            )
+                .tabItem {
+                    Label("Pedal", systemImage: "pedal.accelerator")
+                }
+
             DebugView(logger: coordinator.obdLogger)
                 .tabItem {
                     Label("Debug", systemImage: "terminal")

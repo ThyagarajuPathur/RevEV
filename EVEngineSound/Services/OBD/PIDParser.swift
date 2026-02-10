@@ -44,16 +44,25 @@ enum PIDParser {
 
     // MARK: - Pedal Position Parsing
 
+    /// Max raw pedal value for normalization.
+    /// Observed range can go up to ~5000 during full acceleration.
+    private static let pedalRawMax: Double = 5000.0
+
     /// Parse accelerator pedal from Hyundai/Kia BMS DID 0x0101 response (ECU 7E4).
+    ///
     /// Response: [62, 01, 01, <data...>]
-    /// Pedal at data offset 14: M / 2 = percent, normalized to 0.0-1.0
-    /// Returns normalized 0.0 to 1.0
+    /// Pedal at data bytes 10-11 (signed Int16 big-endian):
+    ///   - Acceleration: positive values 0→4095
+    ///   - Deceleration/regen: negative values → treated as 0% throttle
     static func parseHyundaiPedal(from bytes: [UInt8]) -> Double {
         guard let dataStart = findHeader([0x62, 0x01, 0x01], in: bytes) else { return 0 }
-        guard dataStart + 14 < bytes.count else { return 0 }
-        let m = Double(bytes[dataStart + 14])
-        let percent = m / 2.0 // 0-100%
-        return min(1.0, max(0.0, percent / 100.0))
+        guard dataStart + 11 < bytes.count else { return 0 }
+        let a = bytes[dataStart + 10]   // high byte
+        let b = bytes[dataStart + 11]   // low byte
+        let raw = Int(Int16(bitPattern: UInt16(a) << 8 | UInt16(b)))
+        // Negative values = regen/deceleration → off throttle
+        if raw <= 0 { return 0 }
+        return min(1.0, Double(raw) / pedalRawMax)
     }
 
     /// Parse standard OBD-II pedal position (PID 0x49).

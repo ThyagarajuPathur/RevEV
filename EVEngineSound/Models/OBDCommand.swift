@@ -60,11 +60,6 @@ enum OBDCommand {
     /// KWP service 0x21 positive response
     static let kwpPositiveResponse: UInt8 = 0x61
 
-    /// Hyundai/Kia Motor RPM DID 0x0101
-    static let hyundaiRPM_DID: UInt16 = 0x0101
-    /// Hyundai/Kia Accelerator Pedal DID 0x0154
-    static let hyundaiPedal_DID: UInt16 = 0x0154
-
     /// Build a UDS read request command string for the given DID
     static func udsReadRequest(did: UInt16) -> String {
         let serviceID = String(format: "%02X", udsReadDataByID)
