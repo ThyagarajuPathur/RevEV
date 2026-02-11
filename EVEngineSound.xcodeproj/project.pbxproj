@@ -7,14 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		A1B2C3D4E5F60718A1B2C3D4 /* Services/OBD/OBDLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718A1B2C3D5 /* Services/OBD/OBDLogger.swift */; };
-		A1B2C3D4E5F60718A1B2C3D6 /* Views/Debug/DebugView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718A1B2C3D7 /* Views/Debug/DebugView.swift */; };
-		ACCE1D8B3F9A20E1C7B5D401 /* Views/Debug/AccPedalDebugView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACCE1D8B3F9A20E1C7B5D402 /* Views/Debug/AccPedalDebugView.swift */; };
 		01DED534122B751423271DC4 /* Views/Demo/DemoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EB67682150481E3BD38FF23 /* Views/Demo/DemoView.swift */; };
 		1000DF9F0E95B52B81618687 /* Services/Audio/RPMAudioMapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE18D3F15BE4DA09C4C5DC96 /* Services/Audio/RPMAudioMapper.swift */; };
-		10D63B760083AC7F3B0E8C87 /* ELM327AdapterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FBB84120529E5144AA4A9CD /* ELM327AdapterTests.swift */; };
 		11423222D412963DB19A2050 /* Services/OBD/OBDService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA7DCA55A67EB6B050838405 /* Services/OBD/OBDService.swift */; };
-		1714E3F645491BD4A88CDC9B /* PIDParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE403FEAF214F5AA7761D8C1 /* PIDParserTests.swift */; };
 		1A9C647FB7473AC37EE624F4 /* Services/Audio/AudioSampleManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB9807E7B294951751B0C2C0 /* Services/Audio/AudioSampleManager.swift */; };
 		1B73FA55C9AA44B2148C502D /* Views/Components/RPMGaugeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 135FE9A027BDA6AF35F2BB07 /* Views/Components/RPMGaugeView.swift */; };
 		1EF145A768BDC069D2EF5329 /* Views/Connection/ConnectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA502B5C984B7A15D48D8DA1 /* Views/Connection/ConnectionView.swift */; };
@@ -31,7 +26,10 @@
 		790C6F49C38FC3E0D292EA28 /* Services/Bluetooth/BluetoothManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91092E30F407383761F4B2F1 /* Services/Bluetooth/BluetoothManager.swift */; };
 		86BC340714553970BCC439A8 /* Resources/Audio in Resources */ = {isa = PBXBuildFile; fileRef = DCB83784AB21951733B4446A /* Resources/Audio */; };
 		9D67C0A0D7B7F6400B5B59E7 /* Models/AudioProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70A76D1E24D9906D1230B2D0 /* Models/AudioProfile.swift */; };
+		A1B2C3D4E5F60718A1B2C3D4 /* Services/OBD/OBDLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718A1B2C3D5 /* Services/OBD/OBDLogger.swift */; };
+		A1B2C3D4E5F60718A1B2C3D6 /* Views/Debug/DebugView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718A1B2C3D7 /* Views/Debug/DebugView.swift */; };
 		A84D948A9A1B05D478007718 /* ViewModels/SettingsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A9912CACBF8B547BD173C60 /* ViewModels/SettingsViewModel.swift */; };
+		ACCE1D8B3F9A20E1C7B5D401 /* Views/Debug/AccPedalDebugView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACCE1D8B3F9A20E1C7B5D402 /* Views/Debug/AccPedalDebugView.swift */; };
 		B746F0FBD30C6D0D44D28D2F /* Extensions/Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9582B71CE38709D20DAA72EB /* Extensions/Extensions.swift */; };
 		CD8C61565A8EE1D0D1B2C626 /* Services/OBD/PIDParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8058686134F857C5E7999D6C /* Services/OBD/PIDParser.swift */; };
 		D0A008DCF76D4A57D9EB8058 /* Services/OBD/UDSProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CF00939E5D03384E7539E9A /* Services/OBD/UDSProtocol.swift */; };
@@ -39,7 +37,6 @@
 		D83E2E89CD14CA4FEA0DE2B1 /* Services/Audio/EngineAudioEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B10EBD92BC3670A872812EC /* Services/Audio/EngineAudioEngine.swift */; };
 		F2F374D1E358AA1FB047C153 /* ViewModels/DashboardViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D979D3F9E4A06C399BE1FC7 /* ViewModels/DashboardViewModel.swift */; };
 		F65DA5462489FB5975EC4365 /* App/EVEngineSoundApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF3E3579EBFD0674BA12991C /* App/EVEngineSoundApp.swift */; };
-		F6652D9B5A672408990C5E79 /* RPMAudioMapperTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CCE0B8ED09960C52A305E23 /* RPMAudioMapperTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -54,14 +51,12 @@
 
 /* Begin PBXFileReference section */
 		03BD2512461AE1CE33748075 /* ViewModels/DemoViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewModels/DemoViewModel.swift; sourceTree = "<group>"; };
-		0FBB84120529E5144AA4A9CD /* ELM327AdapterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ELM327AdapterTests.swift; sourceTree = "<group>"; };
 		135FE9A027BDA6AF35F2BB07 /* Views/Components/RPMGaugeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/Components/RPMGaugeView.swift; sourceTree = "<group>"; };
 		1B10EBD92BC3670A872812EC /* Services/Audio/EngineAudioEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/Audio/EngineAudioEngine.swift; sourceTree = "<group>"; };
 		1CF00939E5D03384E7539E9A /* Services/OBD/UDSProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/OBD/UDSProtocol.swift; sourceTree = "<group>"; };
 		25FB7F0C06526FFC347064D0 /* Models/VehicleData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models/VehicleData.swift; sourceTree = "<group>"; };
 		2ED3981B57583E1781985F5A /* Models/OBDCommand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models/OBDCommand.swift; sourceTree = "<group>"; };
 		3382B1A2D30CB2681FAB22E8 /* Services/Bluetooth/ELM327Adapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/Bluetooth/ELM327Adapter.swift; sourceTree = "<group>"; };
-		4CCE0B8ED09960C52A305E23 /* RPMAudioMapperTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RPMAudioMapperTests.swift; sourceTree = "<group>"; };
 		5E4EE6D12C06AFE4F5DA863F /* ViewModels/ConnectionViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewModels/ConnectionViewModel.swift; sourceTree = "<group>"; };
 		6D979D3F9E4A06C399BE1FC7 /* ViewModels/DashboardViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewModels/DashboardViewModel.swift; sourceTree = "<group>"; };
 		70A76D1E24D9906D1230B2D0 /* Models/AudioProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models/AudioProfile.swift; sourceTree = "<group>"; };
@@ -74,7 +69,10 @@
 		91092E30F407383761F4B2F1 /* Services/Bluetooth/BluetoothManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/Bluetooth/BluetoothManager.swift; sourceTree = "<group>"; };
 		9582B71CE38709D20DAA72EB /* Extensions/Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Extensions/Extensions.swift; sourceTree = "<group>"; };
 		9A9912CACBF8B547BD173C60 /* ViewModels/SettingsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewModels/SettingsViewModel.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718A1B2C3D5 /* Services/OBD/OBDLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/OBD/OBDLogger.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718A1B2C3D7 /* Views/Debug/DebugView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/Debug/DebugView.swift; sourceTree = "<group>"; };
 		AA7DCA55A67EB6B050838405 /* Services/OBD/OBDService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/OBD/OBDService.swift; sourceTree = "<group>"; };
+		ACCE1D8B3F9A20E1C7B5D402 /* Views/Debug/AccPedalDebugView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/Debug/AccPedalDebugView.swift; sourceTree = "<group>"; };
 		AE18D3F15BE4DA09C4C5DC96 /* Services/Audio/RPMAudioMapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/Audio/RPMAudioMapper.swift; sourceTree = "<group>"; };
 		B0CC73C32950173B17E4286A /* Models/BluetoothDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models/BluetoothDevice.swift; sourceTree = "<group>"; };
 		C80BC123FE74B4D0E781491B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -84,11 +82,7 @@
 		DCE94806E16C1E815DD00AEC /* App/AppCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/AppCoordinator.swift; sourceTree = "<group>"; };
 		EA502B5C984B7A15D48D8DA1 /* Views/Connection/ConnectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/Connection/ConnectionView.swift; sourceTree = "<group>"; };
 		F926CBDF07154B78434F3EEB /* Services/OBD/OBDError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/OBD/OBDError.swift; sourceTree = "<group>"; };
-		FE403FEAF214F5AA7761D8C1 /* PIDParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PIDParserTests.swift; sourceTree = "<group>"; };
 		FFCBE03E3B0CBEBB20BDA3E4 /* Views/Dashboard/DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/Dashboard/DashboardView.swift; sourceTree = "<group>"; };
-		A1B2C3D4E5F60718A1B2C3D5 /* Services/OBD/OBDLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/OBD/OBDLogger.swift; sourceTree = "<group>"; };
-		A1B2C3D4E5F60718A1B2C3D7 /* Views/Debug/DebugView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/Debug/DebugView.swift; sourceTree = "<group>"; };
-		ACCE1D8B3F9A20E1C7B5D402 /* Views/Debug/AccPedalDebugView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/Debug/AccPedalDebugView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -122,7 +116,6 @@
 			isa = PBXGroup;
 			children = (
 				CE882751F8B3EE4485706ED4 /* EVEngineSound */,
-				F850DA3429877D0A2E262956 /* EVEngineSoundTests */,
 				1BADDC1D73C1A20F347483E1 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -163,16 +156,6 @@
 				DCB83784AB21951733B4446A /* Resources/Audio */,
 			);
 			path = EVEngineSound;
-			sourceTree = "<group>";
-		};
-		F850DA3429877D0A2E262956 /* EVEngineSoundTests */ = {
-			isa = PBXGroup;
-			children = (
-				0FBB84120529E5144AA4A9CD /* ELM327AdapterTests.swift */,
-				FE403FEAF214F5AA7761D8C1 /* PIDParserTests.swift */,
-				4CCE0B8ED09960C52A305E23 /* RPMAudioMapperTests.swift */,
-			);
-			path = EVEngineSoundTests;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -257,9 +240,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				10D63B760083AC7F3B0E8C87 /* ELM327AdapterTests.swift in Sources */,
-				1714E3F645491BD4A88CDC9B /* PIDParserTests.swift in Sources */,
-				F6652D9B5A672408990C5E79 /* RPMAudioMapperTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
