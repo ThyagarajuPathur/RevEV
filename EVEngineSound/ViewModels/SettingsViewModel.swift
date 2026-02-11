@@ -1,7 +1,9 @@
 import Foundation
+import SwiftUI
 import Combine
 
 final class SettingsViewModel: ObservableObject {
+    @AppStorage("autoConnectEnabled") var autoConnectEnabled: Bool = true
     @Published var selectedProfile: AudioProfile = .ferrari458
     @Published var masterVolume: Double = 0.8
 

@@ -8,6 +8,7 @@ final class ConnectionViewModel: ObservableObject {
 
     @Published private(set) var devices: [BluetoothDevice] = []
     @Published private(set) var connectionState: BluetoothManager.ConnectionState = .disconnected
+    @Published private(set) var isAutoConnecting = false
     @Published var errorMessage: String?
 
     // MARK: - Private
@@ -57,6 +58,10 @@ final class ConnectionViewModel: ObservableObject {
         bluetoothManager.$connectionState
             .receive(on: DispatchQueue.main)
             .assign(to: &$connectionState)
+
+        bluetoothManager.$isAutoConnecting
+            .receive(on: DispatchQueue.main)
+            .assign(to: &$isAutoConnecting)
 
         bluetoothManager.$error
             .compactMap { $0?.errorDescription }
