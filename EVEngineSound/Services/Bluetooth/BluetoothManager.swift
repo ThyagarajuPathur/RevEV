@@ -242,6 +242,22 @@ extension BluetoothManager: CBCentralManagerDelegate {
     func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
         isAutoConnecting = false
         connectionState = .connected
+
+        // Ensure the device appears in discoveredDevices (auto-connect
+        // bypasses scanning, so the device may not have been discovered).
+        if !discoveredDevices.contains(where: { $0.id == peripheral.identifier }) {
+            let name = peripheral.name
+                ?? UserDefaults.standard.string(forKey: Self.lastOBDDeviceNameKey)
+                ?? "OBD Adapter"
+            let device = BluetoothDevice(
+                id: peripheral.identifier,
+                name: name,
+                rssi: 0,
+                peripheral: peripheral
+            )
+            discoveredDevices.append(device)
+        }
+
         logger?.logParsed("BLE connected — discovering ALL services…")
         // Discover ALL services (nil) so we don't miss non-standard UUIDs
         peripheral.discoverServices(nil)
