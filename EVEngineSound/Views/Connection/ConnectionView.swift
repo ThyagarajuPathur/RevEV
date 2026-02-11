@@ -160,7 +160,12 @@ struct ConnectionView: View {
         switch viewModel.connectionState {
         case .disconnected: return "Disconnected"
         case .scanning: return "Scanning..."
-        case .connecting: return "Connecting..."
+        case .connecting:
+            if viewModel.isAutoConnecting,
+               let name = UserDefaults.standard.string(forKey: BluetoothManager.lastOBDDeviceNameKey) {
+                return "Auto-connecting to \(name)..."
+            }
+            return "Connecting..."
         case .connected: return "Connected"
         case .ready: return "Ready"
         }

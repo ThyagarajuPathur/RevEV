@@ -19,10 +19,13 @@ final class AppCoordinator: ObservableObject {
     // MARK: - Private
 
     private var cancellables = Set<AnyCancellable>()
+    private var didAttemptAutoConnect = false
 
     // MARK: - Init
 
     init() {
+        UserDefaults.standard.register(defaults: ["autoConnectEnabled": true])
+
         let btManager = BluetoothManager()
         let logger = OBDLogger()
         let obd = OBDService(bluetoothManager: btManager, logger: logger)
@@ -57,6 +60,19 @@ final class AppCoordinator: ObservableObject {
         btManager.$connectionState
             .receive(on: DispatchQueue.main)
             .assign(to: &$bleState)
+
+        // Auto-connect on first BLE power-on
+        btManager.$centralState
+            .first(where: { $0 == .poweredOn })
+            .sink { [weak self] _ in
+                guard let self, !self.didAttemptAutoConnect else { return }
+                self.didAttemptAutoConnect = true
+                if UserDefaults.standard.bool(forKey: "autoConnectEnabled") {
+                    self.obdLogger.logParsed("Auto-connect: attempting…")
+                    self.bluetoothManager.autoConnect()
+                }
+            }
+            .store(in: &cancellables)
 
         // Log every BLE state change & auto-start/stop OBD service
         btManager.$connectionState

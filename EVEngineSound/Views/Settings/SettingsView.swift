@@ -7,6 +7,17 @@ struct SettingsView: View {
     var body: some View {
         NavigationView {
             List {
+                // Auto-connect
+                Section {
+                    Toggle("Auto Connect", isOn: $viewModel.autoConnectEnabled)
+                } header: {
+                    Text("Bluetooth")
+                } footer: {
+                    if let name = UserDefaults.standard.string(forKey: BluetoothManager.lastOBDDeviceNameKey) {
+                        Text("Last device: \(name)")
+                    }
+                }
+
                 // Profile selection
                 Section {
                     ForEach(AudioProfile.allProfiles) { profile in

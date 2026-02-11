@@ -22,11 +22,18 @@ final class BluetoothManager: NSObject, ObservableObject {
         CBUUID(string: "FFF0")
     ]
 
+    // MARK: - UserDefaults Keys
+
+    static let lastOBDDeviceUUIDKey = "lastOBDDeviceUUID"
+    static let lastOBDDeviceNameKey = "lastOBDDeviceName"
+
     // MARK: - Published Properties
 
     @Published private(set) var connectionState: ConnectionState = .disconnected
     @Published private(set) var discoveredDevices: [BluetoothDevice] = []
     @Published private(set) var error: OBDError?
+    @Published private(set) var isAutoConnecting = false
+    @Published private(set) var centralState: CBManagerState = .unknown
 
     // MARK: - Combine Publishers
 
@@ -105,12 +112,35 @@ final class BluetoothManager: NSObject, ObservableObject {
 
     func connect(to device: BluetoothDevice) {
         stopScanning()
+        isAutoConnecting = false
         connectionState = .connecting
         shouldAutoReconnect = true
         lastConnectedPeripheralID = device.peripheral.identifier
         connectedPeripheral = device.peripheral
         device.peripheral.delegate = self
         centralManager.connect(device.peripheral, options: nil)
+
+        // Persist for auto-connect on next launch
+        UserDefaults.standard.set(device.peripheral.identifier.uuidString, forKey: Self.lastOBDDeviceUUIDKey)
+        UserDefaults.standard.set(device.name, forKey: Self.lastOBDDeviceNameKey)
+    }
+
+    /// Attempts to auto-connect to the last known device using persisted UUID.
+    /// Call this after BLE powers on.
+    func autoConnect() {
+        guard let uuidString = UserDefaults.standard.string(forKey: Self.lastOBDDeviceUUIDKey),
+              let uuid = UUID(uuidString: uuidString) else { return }
+
+        let peripherals = centralManager.retrievePeripherals(withIdentifiers: [uuid])
+        guard let peripheral = peripherals.first else { return }
+
+        isAutoConnecting = true
+        connectionState = .connecting
+        shouldAutoReconnect = true
+        lastConnectedPeripheralID = uuid
+        connectedPeripheral = peripheral
+        peripheral.delegate = self
+        centralManager.connect(peripheral, options: nil)
     }
 
     func disconnect() {
@@ -153,6 +183,7 @@ final class BluetoothManager: NSObject, ObservableObject {
         notifyFromELMService = false
         pendingServiceCount = 0
         responseBuffer = ""
+        isAutoConnecting = false
         connectionState = .disconnected
     }
 
@@ -173,6 +204,7 @@ final class BluetoothManager: NSObject, ObservableObject {
 extension BluetoothManager: CBCentralManagerDelegate {
 
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
+        centralState = central.state
         switch central.state {
         case .poweredOn:
             break
@@ -208,7 +240,24 @@ extension BluetoothManager: CBCentralManagerDelegate {
     }
 
     func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
+        isAutoConnecting = false
         connectionState = .connected
+
+        // Ensure the device appears in discoveredDevices (auto-connect
+        // bypasses scanning, so the device may not have been discovered).
+        if !discoveredDevices.contains(where: { $0.id == peripheral.identifier }) {
+            let name = peripheral.name
+                ?? UserDefaults.standard.string(forKey: Self.lastOBDDeviceNameKey)
+                ?? "OBD Adapter"
+            let device = BluetoothDevice(
+                id: peripheral.identifier,
+                name: name,
+                rssi: 0,
+                peripheral: peripheral
+            )
+            discoveredDevices.append(device)
+        }
+
         logger?.logParsed("BLE connected — discovering ALL services…")
         // Discover ALL services (nil) so we don't miss non-standard UUIDs
         peripheral.discoverServices(nil)

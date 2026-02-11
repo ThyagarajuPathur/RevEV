@@ -24,21 +24,18 @@
 - [x] F-020 Debug tab — real-time log viewer with color-coded TX/RX/parsed/error entries
 - [x] F-021 RPMGaugeView — circular 270° arc gauge with colored segments and animated needle
 - [x] F-022 OBDLogger — timestamped log entries (max 500), direction-coded
+- [x] F-023 Use real pedal data in audio engine (currently hardcoded to 100% throttle)
+- [x] F-024 PIDParser unified wrappers — `parseRPM(from:isUDS:)` and `parsePedalPosition(from:)`
 
 ## Features (Planned / Incomplete)
 
-- [ ] F-023 Use real pedal data in audio engine (currently hardcoded to 100% throttle)
-- [ ] F-024 PIDParser unified wrappers — `parseRPM(from:isUDS:)` and `parsePedalPosition(from:)`
-- [ ] F-025 Hyundai pedal DID 0x0154 support (constant referenced but never used)
+- [ ] F-025 Auto connect bluetooth
 - [ ] F-026 UDS multi-frame reassembly active usage (logic exists but not called by OBDService)
 - [ ] F-027 Audio file validation on startup (currently silent failure if files missing)
 - [ ] F-028 Share single EngineAudioEngine between Demo and Dashboard (currently independent instances)
 
+
 ## Bugs
 
 - [ ] B-001 ELM327 init sequence mismatch — code sends 5 commands (ATZ, ATE0, ATL0, ATSP6, ATSH7E4), tests expect 6 (ATZ, ATE0, ATL0, ATS0, ATH1, ATSP0)
-- [ ] B-002 PIDParser test failures — `parseRPM()` and `parsePedalPosition()` wrapper functions not implemented
-- [ ] B-003 Hyundai RPM test data format mismatch — tests pass raw 2-byte arrays but parser expects full response with [0x62,0x01,0x01] header
-- [ ] B-004 `OBDCommand.hyundaiPedalRequest` constant missing — test references `"220154"` but it doesn't exist in code
-- [ ] B-005 RPM velocity smoothing unreliable when OBD polling is disrupted (no guard against extreme time deltas beyond 100ms cap)
 - [ ] B-006 Demo mode memory leak risk — DemoViewModel creates its own EngineAudioEngine; if view destruction doesn't trigger `stop()`, engine persists
