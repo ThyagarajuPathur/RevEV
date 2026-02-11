@@ -33,6 +33,7 @@
 - [ ] F-026 UDS multi-frame reassembly active usage (logic exists but not called by OBDService)
 - [ ] F-027 Audio file validation on startup (currently silent failure if files missing)
 - [ ] F-028 Share single EngineAudioEngine between Demo and Dashboard (currently independent instances)
+- [ ] F-029 RPMGaugeView — circular 270° arc gauge with colored segments and animated needle
 
 
 ## Bugs

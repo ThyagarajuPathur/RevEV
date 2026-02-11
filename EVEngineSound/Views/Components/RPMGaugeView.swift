@@ -28,34 +28,42 @@ struct RPMGaugeView: View {
                 arcPath(radius: radius, from: startAngle, to: endAngle)
                     .stroke(Color(.systemGray5), style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
 
-                // Colored segments
+                // Colored segments (proportional to maxRPM)
                 arcSegment(radius: radius, lineWidth: lineWidth,
-                           segmentStart: 0, segmentEnd: 3000 / maxRPM,
+                           segmentStart: 0, segmentEnd: 0.4,
                            color: .gaugeGreen)
 
                 arcSegment(radius: radius, lineWidth: lineWidth,
-                           segmentStart: 3000 / maxRPM, segmentEnd: 6000 / maxRPM,
+                           segmentStart: 0.4, segmentEnd: 0.7,
                            color: .gaugeYellow)
 
                 arcSegment(radius: radius, lineWidth: lineWidth,
-                           segmentStart: 6000 / maxRPM, segmentEnd: 8000 / maxRPM,
+                           segmentStart: 0.7, segmentEnd: 0.88,
                            color: .gaugeOrange)
 
                 arcSegment(radius: radius, lineWidth: lineWidth,
-                           segmentStart: 8000 / maxRPM, segmentEnd: 1.0,
+                           segmentStart: 0.88, segmentEnd: 1.0,
                            color: .gaugeRed)
 
-                // Tick marks
+                // Minor ticks (every 500 RPM)
+                ForEach(0..<Int(maxRPM / 500), id: \.self) { tick in
+                    let rpmValue = Double(tick) * 500.0
+                    if rpmValue.truncatingRemainder(dividingBy: 1000) != 0 {
+                        let fraction = rpmValue / maxRPM
+                        let angle = startAngle + sweepAngle * fraction
+                        tickMark(center: center, radius: radius, angle: angle,
+                                 length: size * 0.03, lineWidth: 1)
+                    }
+                }
+
+                // Major ticks (every 1000 RPM) + labels
                 ForEach(0...Int(maxRPM / 1000), id: \.self) { tick in
                     let fraction = Double(tick) * 1000.0 / maxRPM
                     let angle = startAngle + sweepAngle * fraction
-                    let isMajor = tick % 1 == 0
                     tickMark(center: center, radius: radius, angle: angle,
-                             length: isMajor ? size * 0.06 : size * 0.03,
-                             lineWidth: isMajor ? 2 : 1)
+                             length: size * 0.06, lineWidth: 2)
 
-                    // Tick label
-                    tickLabel(tick: tick, center: center, radius: radius - size * 0.12,
+                    tickLabel(tick: tick, center: center, radius: radius - size * 0.15,
                               angle: angle, fontSize: size * 0.05)
                 }
 
@@ -81,21 +89,8 @@ struct RPMGaugeView: View {
                         .font(.system(size: size * 0.04, weight: .medium))
                         .foregroundColor(.secondary)
                 }
-                .offset(y: size * 0.15)
+                .offset(y: size * 0.18)
 
-                // Min label
-                Text("0")
-                    .font(.system(size: size * 0.04))
-                    .foregroundColor(.secondary)
-                    .position(labelPosition(center: center, radius: radius + size * 0.08,
-                                            angle: startAngle))
-
-                // Max label
-                Text("\(Int(maxRPM))")
-                    .font(.system(size: size * 0.04))
-                    .foregroundColor(.secondary)
-                    .position(labelPosition(center: center, radius: radius + size * 0.08,
-                                            angle: endAngle))
             }
             .position(center)
         }
@@ -157,11 +152,6 @@ struct RPMGaugeView: View {
                       y: CGFloat(sin(rad)) * radius + center.y)
     }
 
-    private func labelPosition(center: CGPoint, radius: CGFloat, angle: Double) -> CGPoint {
-        let rad = (angle - 90) * .pi / 180
-        return CGPoint(x: CGFloat(cos(rad)) * radius + center.x,
-                       y: CGFloat(sin(rad)) * radius + center.y)
-    }
 }
 
 // MARK: - Needle Shape
