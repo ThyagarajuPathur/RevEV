@@ -289,32 +289,45 @@ final class EngineAudioEngine: ObservableObject {
         }
         lastTimestamp = link.timestamp
 
-        // ── RPM smoothing (independent of pedal) ──────────────────────
+        // ── Pedal smoothing (runs first — drives RPM responsiveness) ──
+
+        renderedPedal += (targetPedal - renderedPedal) * pedalSmoothing
+
+        // ── RPM smoothing (adaptive based on gap + pedal) ─────────────
+
+        let rpmGap = abs(targetRPM - renderedRPM)
+
+        // Pedal-reactive: when pedal is high, track faster across all stages
+        let pedalUrgency = renderedPedal.clamped(to: 0...1) // 0 = coasting, 1 = full throttle
+        let urgencyBoost = 1.0 + pedalUrgency * 2.0         // 1x–3x multiplier
 
         // 1. Smoothly steer rpmRate toward targetRate
-        rpmRate += (targetRate - rpmRate) * rateSmoothingPerFrame
+        //    Base 0.06 → up to 0.18 at full throttle; jumps to 0.30 on large gaps
+        let adaptiveRateSmoothing = (rpmGap > 500 ? 0.30 : rateSmoothingPerFrame * urgencyBoost)
+        rpmRate += (targetRate - rpmRate) * adaptiveRateSmoothing
 
         // 2. Extrapolate RPM, scaled by pedal confidence.
-        //    High pedal → confident extrapolation between OBD readings.
-        //    Low pedal  → minimal extrapolation (0.05), overshoot self-limits.
         let confidence = max(renderedPedal, 0.05)
         renderedRPM += rpmRate * dt * confidence
 
-        // 3. Drift correction toward actual OBD value
-        renderedRPM += (targetRPM - renderedRPM) * correctionFactor
+        // 3. Adaptive drift correction toward actual OBD value
+        //    Small gaps (<500 RPM): gentle 2%–6% correction (smooth interpolation)
+        //    Large gaps (>500 RPM): aggressive 15%–25% correction (snap to reality)
+        let adaptiveCorrection: Double
+        if rpmGap > 500 {
+            adaptiveCorrection = (0.15 + 0.10 * pedalUrgency)
+        } else {
+            adaptiveCorrection = correctionFactor * urgencyBoost
+        }
+        renderedRPM += (targetRPM - renderedRPM) * adaptiveCorrection
 
         // 4. Clamp
         renderedRPM = max(0, renderedRPM)
 
-        // 5. Final output smoothing
-        outputRPM += (renderedRPM - outputRPM) * outputSmoothing
-
-        // ── Pedal smoothing (independent of RPM) ─────────────────────
-
-        // Single symmetric EMA — no special cases, no intent detection.
-        // The equal-power cosine crossfade in the mapper maintains constant
-        // perceived volume, so a simple smooth transition is all that's needed.
-        renderedPedal += (targetPedal - renderedPedal) * pedalSmoothing
+        // 5. Final output smoothing — also pedal-reactive
+        //    Base 0.12 → up to 0.36 at full throttle; 0.50 on large gaps
+        let adaptiveOutputSmoothing = (rpmGap > 300 ? 0.50 : outputSmoothing * urgencyBoost)
+        outputRPM += (renderedRPM - outputRPM) * adaptiveOutputSmoothing
 
         // ── Apply to audio ───────────────────────────────────────────
 
